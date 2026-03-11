@@ -1,0 +1,13 @@
+manifest_path: data/interim/manifests/manifest.csv
+duplicate_candidates_path: outputs/tables/duplicate_candidates.csv
+split_dir: data/interim/split_files
+holdout:
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  seed: 42
+repeated_cv:
+  n_splits: 5
+  n_repeats: 3
+  val_fraction_within_train: 0.1764705882
+  seed: 42

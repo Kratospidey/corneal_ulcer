@@ -1,0 +1,10 @@
+task_name: severity_5class
+label_column: task_severity_5class
+class_names:
+  - no_ulcer
+  - ulcer_leq_25pct
+  - ulcer_leq_50pct
+  - ulcer_geq_75pct
+  - central_ulcer
+description: Secondary confirmed Stage 3 task grounded in the dataset Type-derived severity labels.
+recommended_metric: balanced_accuracy

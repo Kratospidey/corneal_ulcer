@@ -1,0 +1,25 @@
+data_root: data/raw/sustech_sysu
+output_root: outputs
+seed: 42
+batch_size: 16
+num_workers: 4
+figure_dpi: 160
+montage_sample_count: 16
+extreme_sample_count: 12
+embedding_backbones:
+  - convnextv2_tiny
+embedding_compare_variant: masked_highlight_proxy
+preprocessing_variants:
+  - raw_rgb
+  - blue_channel_removed
+  - grayscale
+  - gaussian_blur
+  - otsu_threshold
+  - masked_highlight_proxy
+  - clahe_exploratory
+duplicate_exact_threshold: 1.0
+duplicate_perceptual_hamming_threshold: 4
+duplicate_embedding_cosine_threshold: 0.995
+blur_low_threshold: 20.0
+brightness_low_threshold: 40.0
+brightness_high_threshold: 215.0

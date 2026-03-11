@@ -1,0 +1,303 @@
+You are a senior ML infrastructure and training-systems engineer.
+
+You are working inside an existing corneal ulcer classification repository that already contains:
+- Stage 2 EDA code
+- Stage 3 baseline training/evaluation/explainability code
+- Stage 4 ConvNeXtV2 code or pending ConvNeXtV2 integration
+- existing model families including:
+  - AlexNet
+  - ResNet-18
+  - VGG16
+  - ConvNeXtV2
+
+Your task is to perform a focused modernization and usability upgrade across the ML/training codebase.
+
+IMPORTANT:
+This is NOT a redesign of the project.
+Do NOT change dataset schema.
+Do NOT change experiment logic unless needed for correctness.
+Do NOT change benchmark conclusions.
+This is a code-quality, runtime-output, and warning-fix pass.
+
+==================================================
+PRIMARY GOAL
+==================================================
+Patch and improve the existing ML scripts so that:
+
+1. deprecated AMP API usage is fixed everywhere
+2. training/evaluation/explainability/inference terminal output becomes much more informative and polished
+3. progress bars are added where appropriate
+4. final run statistics are displayed clearly in rich-colored terminal summaries
+5. the changes apply consistently across:
+   - AlexNet workflows
+   - ResNet-18 workflows
+   - VGG16 workflows
+   - ConvNeXtV2 workflows
+
+==================================================
+MAIN ISSUES TO FIX
+==================================================
+
+Issue 1 — AMP deprecation warnings
+Current warning examples:
+- torch.cuda.amp.GradScaler(...) is deprecated
+- torch.cuda.amp.autocast(...) is deprecated
+
+You must update the codebase to use the modern API:
+- torch.amp.GradScaler("cuda", ...)
+- torch.amp.autocast("cuda", ...)
+or the correct device-aware equivalent with safe CPU fallback
+
+This must be fixed consistently across all ML/training-related scripts.
+
+Issue 2 — poor terminal UX
+Current scripts run but terminal output is too plain and not sufficiently informative.
+
+You must improve the runtime UX by adding:
+- rich-formatted logging
+- colored section headers
+- per-epoch summaries
+- clear train/val/test metric blocks
+- progress bars for loops
+- clean final run summary panels/tables
+
+Issue 3 — end-of-run stats not surfaced clearly
+At the end of each run, the terminal should show a strong summary of:
+- experiment name
+- model family
+- task
+- preprocessing mode
+- device
+- best checkpoint metric
+- final validation/test metrics
+- output paths
+- whether explainability/report artifacts were generated
+
+==================================================
+SCOPE OF FILES TO REVIEW
+==================================================
+Review and patch all ML/runtime-facing scripts and utilities that may use AMP, training loops, progress bars, logging, or terminal output, including but not limited to:
+
+- src/training/trainer.py
+- src/training/train.py
+- src/main_train.py
+- src/main_eval.py
+- src/explainability/explain.py
+- src/explainability/gradcam_utils.py
+- src/inference/predict.py
+- src/model_factory.py
+- src/evaluation/reports.py
+- any shared logging / config / experiment utility modules
+- any ConvNeXtV2-related configs or utilities if they need message/output alignment
+
+Do not assume only trainer.py needs patching.
+Search the codebase for all:
+- torch.cuda.amp
+- logging setup
+- print statements
+- tqdm/progress logic
+- metric summary points
+
+==================================================
+NON-NEGOTIABLE RULES
+==================================================
+1. Do NOT break existing experiment naming.
+2. Do NOT break existing config contracts.
+3. Do NOT silently change evaluation metrics.
+4. Do NOT remove existing output files.
+5. Do NOT alter benchmark logic except where needed to fix warnings or improve UX.
+6. Do NOT introduce changes that make CPU fallback impossible.
+7. Do NOT replace the repo structure.
+8. Do NOT downgrade functionality just to simplify output.
+9. Preserve reproducibility and deterministic behavior where already configured.
+
+==================================================
+AMP MODERNIZATION REQUIREMENTS
+==================================================
+You must modernize AMP usage correctly.
+
+Requirements:
+- replace deprecated torch.cuda.amp usage with torch.amp equivalents
+- keep device-aware behavior
+- ensure CUDA runs use AMP properly
+- ensure CPU mode does not crash
+- if needed, branch cleanly by device type
+
+Examples of intent:
+- scaler should use the modern torch.amp.GradScaler API
+- autocast contexts should use torch.amp.autocast with the proper device_type
+- if AMP is disabled or unsupported, behavior should remain correct
+
+Also:
+- eliminate repeated FutureWarning spam from the terminal
+- ensure no deprecated AMP call remains in the ML scripts
+
+==================================================
+RICH OUTPUT / TERMINAL UX REQUIREMENTS
+==================================================
+Use the rich library to improve terminal experience.
+
+Add or improve:
+- rich logging handler
+- colored panels for experiment start/end
+- metric tables
+- progress bars for training/validation/test loops
+- status messages for:
+  - loading config
+  - building dataloaders
+  - model creation
+  - checkpoint saving
+  - evaluation start/end
+  - explainability generation
+  - report export
+
+Preferred rich components:
+- rich.console.Console
+- rich.table.Table
+- rich.panel.Panel
+- rich.progress.Progress
+- rich.progress.BarColumn
+- rich.progress.TextColumn
+- rich.progress.TimeElapsedColumn
+- rich.progress.TimeRemainingColumn
+- rich.logging.RichHandler
+- optionally rich.traceback
+
+Do not overdo the styling. Keep it professional and readable.
+
+==================================================
+PROGRESS BAR REQUIREMENTS
+==================================================
+Add progress bars where they improve usability, especially for:
+- training batches
+- validation batches
+- test batches
+- explainability image generation
+- embedding / prediction loops if applicable
+
+Requirements:
+- progress bars must not corrupt logs
+- progress bars should show:
+  - phase name
+  - batch progress
+  - elapsed time
+  - ETA where possible
+  - optionally live loss for training
+- disable or simplify them cleanly in non-interactive environments if necessary
+
+==================================================
+END-OF-RUN TERMINAL SUMMARY REQUIREMENTS
+==================================================
+At the end of each run, display a rich-colored summary in terminal.
+
+For training runs, include:
+- experiment name
+- task
+- model
+- preprocessing mode
+- device
+- number of epochs run
+- best validation metric
+- final test metrics if available
+- checkpoint path
+- metrics path
+- report path
+- prediction path
+
+For evaluation runs, include:
+- experiment / checkpoint
+- split evaluated
+- balanced accuracy
+- macro F1
+- weighted F1
+- confusion matrix path
+- prediction CSV path
+- report path
+
+For explainability runs, include:
+- experiment name
+- checkpoint used
+- number of examples processed
+- output directory
+- summary report path
+
+This should be shown in clearly formatted rich panels/tables, not plain prints.
+
+==================================================
+LOGGING REQUIREMENTS
+==================================================
+Standardize logging so that:
+- logs are informative
+- logs remain machine-readable enough for debugging
+- major lifecycle events are obvious
+- warnings/errors are clear
+- log formatting is consistent across training/eval/explainability scripts
+
+Use a shared logger/helper if needed, but do not over-abstract.
+
+==================================================
+MODEL-FAMILY CONSISTENCY REQUIREMENT
+==================================================
+These improvements must apply consistently to all project model families:
+- AlexNet
+- ResNet-18
+- VGG16
+- ConvNeXtV2
+
+This does NOT mean separate code per model family.
+It means the runtime output and AMP fixes must work regardless of model family.
+
+==================================================
+QUALITY-OF-LIFE IMPROVEMENTS TO ADD
+==================================================
+Where sensible, add:
+- explicit display of class names/counts before training
+- parameter count summary
+- trainable vs frozen parameter counts
+- current learning rate in epoch summaries
+- checkpoint save notifications
+- early stopping notifications
+- final “best epoch” summary
+- clear message when ROC/PR is skipped
+- clear message when Grad-CAM target layer is selected
+
+Do not invent metrics that the code does not compute.
+
+==================================================
+VALIDATION / TEST PLAN
+==================================================
+After patching, verify with at least:
+1. one short training smoke run
+2. one evaluation run
+3. one explainability run
+
+Confirm:
+- no deprecated AMP warnings remain
+- rich terminal output appears correctly
+- progress bars render correctly
+- end-of-run summaries are printed
+- outputs still land in the same expected directories
+- no regressions in checkpointing / metrics export / predictions export
+
+==================================================
+DELIVERY REQUIREMENTS
+==================================================
+Return:
+1. a short patch plan
+2. the files changed
+3. the exact code edits
+4. a summary of the new terminal UX behavior
+5. the validation commands run
+6. confirmation that deprecated AMP warnings were removed
+7. any remaining caveats
+
+==================================================
+IMPLEMENTATION STYLE
+==================================================
+Be surgical and professional.
+Improve the codebase without turning it into a flashy mess.
+Preserve current functionality, output contracts, and experiment semantics.
+Make the terminal output feel like a polished ML training tool.
+
+Start by scanning the repo for deprecated AMP usage and plain logging/print patterns, then patch the training/eval/explainability stack consistently.
+Do not stop after fixing trainer.py. Search and patch the full ML/runtime stack for deprecated AMP usage and weak terminal UX patterns.

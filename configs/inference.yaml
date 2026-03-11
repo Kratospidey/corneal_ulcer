@@ -1,0 +1,3 @@
+base_config: train_convnextv2_raw.yaml
+model:
+  pretrained: false

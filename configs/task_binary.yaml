@@ -1,0 +1,7 @@
+task_name: binary
+label_column: task_binary
+class_names:
+  - no_ulcer
+  - ulcer_present
+description: Simplified binary task supported by the manifest.
+recommended_metric: balanced_accuracy

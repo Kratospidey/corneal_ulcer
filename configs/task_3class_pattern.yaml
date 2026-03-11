@@ -1,0 +1,8 @@
+task_name: pattern_3class
+label_column: task_pattern_3class
+class_names:
+  - point_like
+  - point_flaky_mixed
+  - flaky
+description: Primary confirmed Stage 3 task grounded in the dataset Category-derived pattern labels.
+recommended_metric: balanced_accuracy

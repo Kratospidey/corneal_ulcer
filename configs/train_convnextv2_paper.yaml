@@ -1,0 +1,3 @@
+base_config: train_convnextv2_raw.yaml
+experiment_name: pattern3__convnextv2_tiny__masked_highlight_proxy__holdout_v1__seed42
+preprocessing_mode: masked_highlight_proxy

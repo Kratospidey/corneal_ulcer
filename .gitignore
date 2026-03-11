@@ -1,0 +1,90 @@
+# ----------------------------
+# Python
+# ----------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Virtual/env tooling
+.venv/
+venv/
+env/
+ENV/
+
+# Micromamba / Conda local stuff
+.conda/
+conda-meta/
+
+# Jupyter
+*.nbconvert.ipynb
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# ----------------------------
+# Project data - DO NOT COMMIT
+# ----------------------------
+data/raw/
+data/interim/
+data/processed/
+outputs/
+models/checkpoints/
+models/exported/
+experiments/
+archive/
+
+# Large local zips / datasets
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+
+# Notebook / generated media if large
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.mp4
+
+# ----------------------------
+# Secrets - DO NOT COMMIT
+# ----------------------------
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+.env
+.env.*
+secrets/
+**/secrets/
+*serviceAccount*.json
+*firebase-adminsdk*.json
+*.credentials.json
+
+# ----------------------------
+# Keep repo structure placeholders if needed
+# ----------------------------
+!data/.gitkeep
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+!outputs/.gitkeep
+!models/.gitkeep
+!models/checkpoints/.gitkeep
+!models/exported/.gitkeep
+!experiments/.gitkeep
