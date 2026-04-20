@@ -1,0 +1,371 @@
+You are a senior ML tooling and developer-experience engineer.
+
+You are working inside an existing corneal ulcer classification repository that already contains:
+- Stage 2 EDA stack
+- Stage 3 baseline CNN training/evaluation/explainability stack
+- Stage 4 ConvNeXtV2 stack or pending ConvNeXtV2 execution logic
+- working configs, split files, model factory, trainer, evaluator, explainability scripts, and inference scripts
+
+Your task is to add a clean, interactive command-line workflow so I no longer need to remember long training/evaluation/explainability commands.
+
+IMPORTANT:
+This is NOT a repo redesign.
+Do NOT replace the current config-based system.
+Do NOT remove existing entrypoints like:
+- src/main_train.py
+- src/main_eval.py
+- src/explainability/explain.py
+
+Instead, build a user-friendly interactive layer ON TOP of the existing system.
+
+==================================================
+PRIMARY GOAL
+==================================================
+Make the project interactive so I can run simple commands like:
+
+- python alexnet.py
+- python resnet18.py
+- python vgg16.py
+- python convnextv2.py
+
+and then the script will interactively ask me what I want to do, such as:
+- which task
+- which input representation
+- train or test or explain
+- which checkpoint to use
+- which device to use
+- whether to use the default recommended config
+- whether to run raw RGB or masked/paper-style path
+
+The script should then route to the correct existing pipeline logic automatically.
+
+==================================================
+DESIGN PRINCIPLE
+==================================================
+Do NOT duplicate training logic in each top-level script.
+
+Instead:
+- create a reusable interactive launcher/helper layer
+- keep the actual training/evaluation/explainability logic in the existing modules
+- top-level scripts should act as friendly wrappers over the current config-driven pipeline
+
+The goal is:
+- preserve maintainability
+- preserve existing configs
+- preserve existing output conventions
+- reduce user memory burden
+
+==================================================
+USER EXPERIENCE GOAL
+==================================================
+I want to be able to do things like:
+
+1. Run:
+   python alexnet.py
+   Then be asked:
+   - Choose action: train / eval / explain / predict
+   - Choose task: pattern3 / severity5 / binary
+   - Choose preprocessing: raw_rgb / masked_highlight_proxy
+   - Choose device: auto / cuda / cpu
+   - Use recommended config? yes/no
+   - If eval/explain/predict: choose checkpoint automatically from available checkpoints or enter path
+   Then the script should execute the correct underlying command logic.
+
+2. Run:
+   python convnextv2.py
+   Then be asked:
+   - Choose variant: tiny / base / other available config
+   - Choose action: train / eval / explain / predict
+   - Choose task
+   - Choose preprocessing
+   - Choose device
+   - Choose checkpoint if needed
+   Then the script should run the correct workflow.
+
+==================================================
+REQUIRED TOP-LEVEL SCRIPTS
+==================================================
+Create or populate these top-level convenience scripts at the project root:
+
+- alexnet.py
+- resnet18.py
+- vgg16.py
+- convnextv2.py
+
+Optional but welcome:
+- launcher.py or cli.py as a generic unified launcher
+
+If you create a shared launcher, the model-specific scripts should still exist and should call into it.
+
+==================================================
+REQUIRED INTERACTIVE BEHAVIOR
+==================================================
+Each model script must guide the user through choices interactively.
+
+At minimum support these actions:
+- train
+- eval
+- explain
+- predict
+
+For train:
+- ask task
+- ask preprocessing mode
+- ask device
+- optionally ask whether to use default recommended config or customize basic parameters
+
+For eval:
+- ask task
+- ask preprocessing mode if needed to identify config
+- ask checkpoint path OR present a numbered list of matching checkpoints found under models/checkpoints/
+- ask split to evaluate: val/test
+- ask device
+
+For explain:
+- ask task
+- ask preprocessing mode
+- ask checkpoint path OR numbered selection
+- ask predictions CSV path OR auto-detect from outputs/predictions/<experiment>/
+- ask device
+
+For predict:
+- ask for image path
+- ask checkpoint path OR numbered selection
+- ask task/config context
+- ask device
+
+==================================================
+SMART DEFAULTS REQUIREMENT
+==================================================
+The interactive scripts must have sensible defaults.
+
+Examples:
+- default task for baseline models: pattern3
+- default preprocessing: raw_rgb
+- default device: cuda if available, else cpu
+- default split for eval: test
+- default checkpoint selection: best.pt from the most relevant experiment folder
+- default config selection should follow the existing configs if they exist
+
+The user should be able to simply press Enter to accept sensible defaults.
+
+==================================================
+CONFIG MAPPING REQUIREMENT
+==================================================
+The interactive layer must map user choices to the existing config files.
+
+Examples:
+- AlexNet + pattern3 + raw_rgb + train
+  -> configs/train_alexnet_raw.yaml
+
+- AlexNet + pattern3 + masked_highlight_proxy + train
+  -> configs/train_alexnet_paper.yaml
+
+- ResNet18 + pattern3 + raw_rgb + train
+  -> configs/train_resnet18_raw.yaml
+
+- VGG16 + pattern3 + raw_rgb + train
+  -> configs/train_vgg16_raw.yaml
+
+- ConvNeXtV2 + pattern3 + raw_rgb + train
+  -> configs/train_convnextv2_raw.yaml
+
+- ConvNeXtV2 + pattern3 + masked_highlight_proxy + train
+  -> configs/train_convnextv2_paper.yaml
+
+If a chosen combination does not yet have a config:
+- say so clearly
+- do not crash
+- optionally suggest the closest available config
+
+==================================================
+CHECKPOINT DISCOVERY REQUIREMENT
+==================================================
+For eval/explain/predict, add checkpoint auto-discovery.
+
+The script should search:
+- models/checkpoints/<experiment_name>/best.pt
+
+and present matching checkpoints in a numbered list.
+
+Example UX:
+1. pattern3__alexnet__raw_rgb__holdout_v1__seed42
+2. pattern3__alexnet__masked_highlight_proxy__holdout_v1__seed42
+
+Then user picks a number or enters a custom path.
+
+Do the same for predictions CSV discovery where useful:
+- outputs/predictions/<experiment_name>/test_predictions.csv
+
+==================================================
+OUTPUT AND TERMINAL UX REQUIREMENT
+==================================================
+Use rich for the interactive UX.
+
+The scripts should display:
+- model banner
+- selected options summary
+- resolved config path
+- resolved checkpoint path
+- action being launched
+- success/failure summary
+
+Use:
+- rich.console.Console
+- rich.prompt.Prompt / Confirm / IntPrompt where useful
+- rich.table.Table
+- rich.panel.Panel
+
+Keep it clean and readable, not noisy.
+
+==================================================
+IMPLEMENTATION APPROACH
+==================================================
+Do NOT shell out to random subprocess strings unless necessary.
+Prefer directly calling the existing Python functions/modules where practical.
+
+If the current codebase is easier to reuse via subprocess invocation of:
+- src/main_train.py
+- src/main_eval.py
+- src/explainability/explain.py
+- src/inference/predict.py
+
+that is acceptable, but do it cleanly and consistently.
+
+If direct function calls are possible and cleaner, use them.
+
+==================================================
+SHARED HELPER LAYER
+==================================================
+Create a reusable helper module, for example:
+- src/interactive_cli.py
+or
+- src/launcher_utils.py
+
+This shared helper should handle:
+- prompting
+- config resolution
+- checkpoint discovery
+- predictions CSV discovery
+- device default resolution
+- action dispatch
+- rich summaries
+
+Do not copy-paste the same logic into all 4 model scripts.
+
+==================================================
+MODEL-SPECIFIC RULES
+==================================================
+AlexNet / ResNet18 / VGG16:
+- default to the baseline configs created in Stage 3
+- support pattern3 first
+- support severity if the matching config exists
+- support binary if the matching config exists
+
+ConvNeXtV2:
+- support variant selection if multiple variants/configs exist
+- default first path should be pattern3 + raw_rgb
+- masked_highlight_proxy should be available as a secondary comparison if config exists
+
+==================================================
+ERROR HANDLING REQUIREMENT
+==================================================
+Handle gracefully:
+- missing config files
+- missing checkpoints
+- missing predictions CSV
+- invalid task/model combinations
+- missing CUDA
+- user cancellation
+- nonexistent image path for predict mode
+
+The script should never just explode with an ugly traceback for normal user mistakes.
+
+==================================================
+PREDICT MODE REQUIREMENT
+==================================================
+For predict mode:
+- ask for image path
+- ask/select checkpoint
+- ask/select task/config
+- run the existing inference logic
+- display predicted class and confidence nicely in terminal
+- optionally show top-k probabilities in a rich table if available
+
+==================================================
+OPTIONAL QUALITY-OF-LIFE FEATURES
+==================================================
+If cleanly implementable, also add:
+- “last used config” memory in a tiny local JSON file
+- “rerun last action” option
+- ability to skip prompts by passing optional CLI flags
+- e.g.:
+  python alexnet.py --train
+  python convnextv2.py --eval
+but interactive mode should remain the default
+
+These are nice-to-have, not mandatory if they complicate the patch too much.
+
+==================================================
+FILES TO CREATE OR MODIFY
+==================================================
+At minimum:
+- alexnet.py
+- resnet18.py
+- vgg16.py
+- convnextv2.py
+- one shared helper module under src/
+
+Update docs too:
+- README_training.md
+
+Optionally:
+- add a generic launcher like launcher.py
+
+==================================================
+README UPDATE REQUIREMENT
+==================================================
+Update README_training.md so it explains:
+- how to use the new interactive scripts
+- example commands
+- what options will be prompted
+- how checkpoint auto-discovery works
+- how to use predict mode
+- how to bypass prompts if optional flags are implemented
+
+==================================================
+VALIDATION REQUIREMENT
+==================================================
+After implementation, validate at least:
+1. one train interactive flow
+2. one eval interactive flow
+3. one explain interactive flow
+4. one predict interactive flow if inference already exists
+
+Confirm:
+- the scripts resolve the correct config
+- the scripts find the correct checkpoints
+- the scripts launch the existing pipeline correctly
+- no existing functionality is broken
+
+==================================================
+DELIVERY REQUIREMENTS
+==================================================
+Return:
+1. a short implementation plan
+2. files created/modified
+3. the full code changes
+4. example interactive flows for alexnet.py and convnextv2.py
+5. validation steps run
+6. any remaining caveats
+
+==================================================
+IMPLEMENTATION STYLE
+==================================================
+Make this feel like a practical personal project launcher:
+- simple
+- robust
+- easy to use repeatedly
+- built on top of the current repo instead of fighting it
+
+Start by inspecting the current configs, checkpoint folder structure, and inference/eval/train entrypoints, then implement the interactive launcher layer and the four top-level model scripts.

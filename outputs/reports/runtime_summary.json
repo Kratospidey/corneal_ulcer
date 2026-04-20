@@ -1,0 +1,27 @@
+{
+  "PIL": true,
+  "batch_size": 16,
+  "cv2": true,
+  "data_root": "data/raw/sustech_sysu",
+  "embedding_backbones": [
+    "convnextv2_tiny"
+  ],
+  "embedding_compare_variant": "masked_highlight_proxy",
+  "imagehash": true,
+  "kornia": true,
+  "matplotlib": true,
+  "num_workers": 4,
+  "numpy": true,
+  "output_root": "outputs",
+  "pandas": true,
+  "pyarrow": true,
+  "requested_device": "cuda",
+  "resolved_device": "cuda",
+  "seed": 42,
+  "sklearn": true,
+  "timm": true,
+  "torch": true,
+  "torchvision": true,
+  "umap": true,
+  "yaml": true
+}

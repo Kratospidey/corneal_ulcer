@@ -39,7 +39,6 @@ Thumbs.db
 data/raw/
 data/interim/
 data/processed/
-outputs/
 models/checkpoints/
 models/exported/
 experiments/
@@ -54,11 +53,7 @@ archive/
 *.rar
 
 # Notebook / generated media if large
-*.png
-*.jpg
-*.jpeg
-*.webp
-*.mp4
+
 
 # ----------------------------
 # Secrets - DO NOT COMMIT
@@ -83,7 +78,6 @@ secrets/
 !data/raw/.gitkeep
 !data/interim/.gitkeep
 !data/processed/.gitkeep
-!outputs/.gitkeep
 !models/.gitkeep
 !models/checkpoints/.gitkeep
 !models/exported/.gitkeep

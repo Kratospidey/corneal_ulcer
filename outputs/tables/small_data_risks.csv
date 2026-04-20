@@ -1,0 +1,6 @@
+risk,value
+readability_failures,0
+pattern_imbalance_ratio,3.934066
+severity_imbalance_ratio,7.583333
+tg_imbalance_ratio,54.8
+ulcer_mask_subset_ratio,0.497191

@@ -1,0 +1,4 @@
+,point_like,point_flaky_mixed,flaky
+point_like,41,6,7
+point_flaky_mixed,15,7,19
+flaky,1,4,8
