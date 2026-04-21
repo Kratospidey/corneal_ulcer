@@ -1,0 +1,6 @@
+,no_ulcer,ulcer_leq_25pct,ulcer_leq_50pct,ulcer_geq_75pct,central_ulcer
+no_ulcer,5,0,0,0,0
+ulcer_leq_25pct,6,3,2,2,1
+ulcer_leq_50pct,10,6,3,8,4
+ulcer_geq_75pct,10,7,2,15,7
+central_ulcer,3,6,0,2,5

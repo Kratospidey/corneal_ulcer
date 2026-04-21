@@ -1,0 +1,10 @@
+aspect,official_protocol,shadow_protocol_v1,paper_protocol_recovered,fidelity_status,notes
+dataset,SUSTech-SYSU manifest with repo task mappings,SUSTech-SYSU manifest with same repo task mappings,SUSTech-SYSU public fluorescein dataset,matched,Same dataset family across official and shadow paths.
+tasks,"pattern_3class; task_tg_5class; severity_5class","pattern_3class; task_tg_5class; severity_5class","three scenarios: type/pattern; grade; severity",matched,Shadow tasks intentionally reuse repo-normalized labels.
+leakage_handling,"duplicate-aware groups enforced across splits",no duplicate-aware grouping,not described in paper,approximated,This is the main intentional protocol gap.
+split_protocol,"official 70/15/15 holdout plus group-aware repeated CV utilities","single stratified 70/15/15 random split without group integrity","10-fold cross-validation",approximated,Full 10-fold shadow family was not run in one pass due cost.
+preprocessing,cornea_crop_scale_v1 or other repo-defined strict paths,diagnostics2024_proxy_preproc_v1,"blue removal; grayscale; Gaussian blur; Otsu; masking",matched_proxy,Green-channel masked proxy used to stay close to paper behavior.
+augmentation,augplus_v2 in current strong official pattern line,diagnostics2024_shadow_v1,"rotation; scaling; padding; flipping",matched_proxy,No color jitter used in shadow augmentation.
+backbone,current official strongest line uses convnextv2_tiny,vit_small_patch16_224 and convnextv2_tiny,ViT,approximated,ViT size is not fully recoverable from the paper text.
+metric_priority,"official selection emphasizes balanced accuracy then macro F1",shadow report includes accuracy BA macro-F1 weighted-F1 and per-class recall,"paper reports accuracy precision recall F1 AUC",approximated,Shadow comparison still reports BA and macro F1 for repo interpretability.
+promotion_role,official benchmark and recommendation source,diagnostic only not for promotion,not an official repo concern,matched,Shadow outputs stay under debug and do not overwrite official artifacts.

@@ -14,8 +14,10 @@ BASELINE_MODELS = {"alexnet", "resnet18", "vgg16"}
 
 
 def save_curve_artifacts(curves: dict[str, Any], output_dirs: dict[str, Path], split_name: str) -> None:
+    import matplotlib  # type: ignore
     import matplotlib.pyplot as plt  # type: ignore
 
+    matplotlib.use("Agg")
     for curve_name, curve_payload in (("roc", curves.get("roc", {})), ("pr", curves.get("pr", {}))):
         if not curve_payload:
             continue

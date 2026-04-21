@@ -5,10 +5,12 @@ from pathlib import Path
 
 def save_confusion_matrix(y_true, y_pred, class_names: list[str] | tuple[str, ...], output_csv: str | Path, output_png: str | Path) -> None:
     from sklearn.metrics import confusion_matrix  # type: ignore
+    import matplotlib  # type: ignore
     import matplotlib.pyplot as plt  # type: ignore
     import numpy as np  # type: ignore
     import pandas as pd  # type: ignore
 
+    matplotlib.use("Agg")
     matrix = confusion_matrix(y_true, y_pred, labels=list(range(len(class_names))))
     pd.DataFrame(matrix, index=class_names, columns=class_names).to_csv(output_csv)
 

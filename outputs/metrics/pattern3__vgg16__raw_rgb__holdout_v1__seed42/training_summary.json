@@ -1,0 +1,5 @@
+{
+  "best_epoch": 5,
+  "best_metric": 0.618368005160458,
+  "checkpoint_path": "models/checkpoints/pattern3__vgg16__raw_rgb__holdout_v1__seed42/best.pt"
+}
