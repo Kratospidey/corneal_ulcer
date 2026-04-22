@@ -1,0 +1,9 @@
+task_name: task_tg_5class
+label_column: task_tg_5class
+class_names:
+  - no_ulcer
+  - micro_punctate
+  - macro_punctate
+  - coalescent_macro_punctate
+  - patch_gt_1mm
+description: TG 5-class holdout benchmark used for narrow structured rescue continuation.

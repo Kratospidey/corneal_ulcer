@@ -20,6 +20,12 @@ TASK_DEFINITIONS: dict[str, TaskDefinition] = {
         class_names=("point_like", "point_flaky_mixed", "flaky"),
         description="Primary Stage 3 task grounded in the dataset spreadsheet Category column.",
     ),
+    "task_tg_5class": TaskDefinition(
+        task_name="task_tg_5class",
+        label_column="task_tg_5class",
+        class_names=("no_ulcer", "micro_punctate", "macro_punctate", "coalescent_macro_punctate", "patch_gt_1mm"),
+        description="Structured TG research task grounded in the dataset spreadsheet Grade column.",
+    ),
     "severity_5class": TaskDefinition(
         task_name="severity_5class",
         label_column="task_severity_5class",

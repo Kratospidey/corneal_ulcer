@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from argparse import ArgumentParser
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from config_utils import resolve_config, write_json
 from data.dataset import build_dataloaders, build_datasets
@@ -20,6 +23,8 @@ def build_parser() -> ArgumentParser:
     parser = ArgumentParser(description="Stage 3 baseline training entrypoint.")
     parser.add_argument("--config", required=True)
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    parser.add_argument("--seed-override", type=int)
+    parser.add_argument("--experiment-name-override")
     return parser
 
 
@@ -27,15 +32,21 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     logger = setup_logging()
     config = resolve_config(args.config)
+    if args.seed_override is not None:
+        config["seed"] = int(args.seed_override)
     task_config = resolve_config(config["task_config"])
     split_config = resolve_config(config["split_config"])
     task_name = str(task_config["task_name"])
     task_definition = get_task_definition(task_name)
 
     set_seed(int(config.get("seed", 42)))
-    experiment_name = build_experiment_name({**config, "task_name": task_name})
-    output_dirs = prepare_output_dirs(experiment_name, output_root=config.get("output_root", "outputs"))
     device = resolve_device(args.device)
+    require_cuda = bool(config.get("require_cuda", False))
+    if require_cuda and not device.startswith("cuda"):
+        logger.error("This training config requires CUDA, but the resolved device is %s.", device)
+        return 2
+    experiment_name = args.experiment_name_override or build_experiment_name({**config, "task_name": task_name})
+    output_dirs = prepare_output_dirs(experiment_name, output_root=config.get("output_root", "outputs"))
     logger.info("Training %s on %s using device=%s", experiment_name, task_name, device)
 
     split_paths = ensure_task_splits(
@@ -52,7 +63,10 @@ def main(argv: list[str] | None = None) -> int:
 
     manifest_df = load_manifest(split_config["manifest_path"])
     split_df = load_split_dataframe(split_path)
-    transforms_by_split = build_transforms(int(config.get("image_size", 224)))
+    transforms_by_split = build_transforms(
+        int(config.get("image_size", 224)),
+        augmentation_profile=str(config.get("augmentation_profile", "baseline")),
+    )
     datasets = build_datasets(
         manifest_df=manifest_df,
         split_df=split_df,
@@ -71,10 +85,31 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     model = create_model(config["model"], num_classes=len(task_definition.class_names)).to(device)
+    backbone_load_summary = None
+    backbone_checkpoint = config.get("model", {}).get("backbone_checkpoint")
+    if backbone_checkpoint:
+        from model_factory import load_backbone_checkpoint
+
+        backbone_load_summary = load_backbone_checkpoint(model, str(backbone_checkpoint))
     class_weights = None
     if bool(config.get("use_class_weights", True)):
         class_weights = compute_class_weights(task_definition.class_names, datasets["train"].class_counts()).to(device)
-    criterion = build_loss(str(config.get("loss_name", "weighted_ce")), class_weights=class_weights)
+    criterion = build_loss(
+        str(config.get("loss_name", "weighted_ce")),
+        class_weights=class_weights,
+        focal_gamma=float(config.get("focal_gamma", 2.0)),
+        label_smoothing=float(config.get("label_smoothing", 0.0)),
+        class_counts=datasets["train"].class_counts(),
+        class_names=task_definition.class_names,
+        ldam_max_m=float(config.get("ldam_max_m", 0.5)),
+        ldam_scale=float(config.get("ldam_scale", 30.0)),
+        drw_start_epoch=int(config.get("drw_start_epoch", 8)),
+        tg_t3_loss_name=str(config.get("tg_t3_loss_name", "balanced_softmax")),
+        tg_t1_weight=float(config.get("tg_t1_weight", 1.0)),
+        tg_t2_weight=float(config.get("tg_t2_weight", 1.0)),
+        tg_t3_weight=float(config.get("tg_t3_weight", 1.0)),
+        tg_leaf_weight=float(config.get("tg_leaf_weight", 0.0)),
+    )
     optimizer = build_optimizer(model, config)
     scheduler = build_scheduler(optimizer, config)
 
@@ -90,7 +125,17 @@ def main(argv: list[str] | None = None) -> int:
         output_dirs=output_dirs,
         experiment_name=experiment_name,
     )
-    write_json(output_dirs["reports"] / "run_metadata.json", {"config_path": args.config, "device": device, **results["splits"]})
+    write_json(
+        output_dirs["reports"] / "run_metadata.json",
+        {
+            "config_path": args.config,
+            "device": device,
+            "require_cuda": require_cuda,
+            "resolved_split_file": str(split_path),
+            "backbone_load_summary": backbone_load_summary,
+            **results["splits"],
+        },
+    )
     return 0
 
 

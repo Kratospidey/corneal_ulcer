@@ -48,6 +48,48 @@ def create_model(model_config: dict[str, Any], num_classes: int):
     return model
 
 
+def load_backbone_checkpoint(model, checkpoint_path: str | None) -> dict[str, Any]:
+    if not checkpoint_path:
+        return {"loaded": False, "missing_keys": [], "unexpected_keys": []}
+
+    import torch  # type: ignore
+
+    checkpoint = torch.load(checkpoint_path, map_location="cpu")
+    raw_state = checkpoint.get("backbone_state_dict") or checkpoint.get("model_state_dict") or checkpoint
+    target = model.backbone if hasattr(model, "backbone") else model
+    prefix = "backbone."
+    target_state = target.state_dict()
+    filtered_state = {}
+    skipped_incompatible_keys: list[str] = []
+    for key, value in raw_state.items():
+        normalized_key = key[len(prefix) :] if key.startswith(prefix) else key
+        if normalized_key.startswith("head.fc.") or normalized_key.startswith("head.weight") or normalized_key.startswith("head.bias"):
+            skipped_incompatible_keys.append(normalized_key)
+            continue
+        if normalized_key not in target_state:
+            continue
+        if hasattr(value, "shape") and tuple(target_state[normalized_key].shape) != tuple(value.shape):
+            skipped_incompatible_keys.append(normalized_key)
+            continue
+        filtered_state[normalized_key] = value
+    if not filtered_state:
+        return {
+            "loaded": False,
+            "missing_keys": [],
+            "unexpected_keys": [],
+            "skipped_incompatible_keys": skipped_incompatible_keys,
+            "reason": "no_compatible_backbone_keys",
+        }
+    missing_keys, unexpected_keys = target.load_state_dict(filtered_state, strict=False)
+    return {
+        "loaded": True,
+        "loaded_key_count": len(filtered_state),
+        "missing_keys": list(missing_keys),
+        "unexpected_keys": list(unexpected_keys),
+        "skipped_incompatible_keys": skipped_incompatible_keys,
+    }
+
+
 def freeze_feature_extractor(model, model_name: str) -> None:
     if model_name == "resnet18":
         for name, parameter in model.named_parameters():

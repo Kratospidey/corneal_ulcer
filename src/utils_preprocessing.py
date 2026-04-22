@@ -32,12 +32,127 @@ def otsu_threshold(gray_image):
     return best_threshold
 
 
+def normalize_binary_mask(mask_image, invert_if_white_corners: bool = True):
+    from PIL import ImageOps  # type: ignore
+
+    mask = mask_image.convert("L")
+    if invert_if_white_corners:
+        corner_coordinates = (
+            (0, 0),
+            (max(0, mask.width - 1), 0),
+            (0, max(0, mask.height - 1)),
+            (max(0, mask.width - 1), max(0, mask.height - 1)),
+        )
+        corner_mean = sum(int(mask.getpixel(coord)) for coord in corner_coordinates) / len(corner_coordinates)
+        if corner_mean > 127:
+            mask = ImageOps.invert(mask)
+    return mask.point(lambda pixel: 255 if pixel > 127 else 0)
+
+
+def normalize_cornea_mask(mask_image):
+    return normalize_binary_mask(mask_image, invert_if_white_corners=True)
+
+
+def normalize_ulcer_mask(mask_image):
+    return normalize_binary_mask(mask_image, invert_if_white_corners=True)
+
+
+def extract_cornea_roi_with_context(image, cornea_mask, context_ratio: float = 0.12):
+    if cornea_mask is None:
+        return image.convert("RGB")
+
+    mask = cornea_mask.convert("L")
+    bbox = mask.getbbox()
+    if bbox is None:
+        return image.convert("RGB")
+
+    left, top, right, bottom = bbox
+    width = max(1, right - left)
+    height = max(1, bottom - top)
+    side = int(round(max(width, height) * (1.0 + float(context_ratio) * 2.0)))
+    center_x = (left + right) / 2.0
+    center_y = (top + bottom) / 2.0
+
+    crop_left = max(0, int(round(center_x - side / 2.0)))
+    crop_top = max(0, int(round(center_y - side / 2.0)))
+    crop_right = min(image.width, crop_left + side)
+    crop_bottom = min(image.height, crop_top + side)
+
+    if crop_right - crop_left < side:
+        crop_left = max(0, crop_right - side)
+    if crop_bottom - crop_top < side:
+        crop_top = max(0, crop_bottom - side)
+
+    return image.convert("RGB").crop((crop_left, crop_top, crop_right, crop_bottom))
+
+
+def _extract_cornea_square_crop(
+    image,
+    cornea_mask,
+    *,
+    context_ratio: float,
+    min_side_ratio: float | None = None,
+    max_side_ratio: float | None = None,
+):
+    rgb = image.convert("RGB")
+    if cornea_mask is None:
+        return rgb
+
+    bbox = cornea_mask.convert("L").getbbox()
+    if bbox is None:
+        return rgb
+
+    left, top, right, bottom = bbox
+    width = max(1, right - left)
+    height = max(1, bottom - top)
+    side = float(max(width, height)) * (1.0 + float(context_ratio) * 2.0)
+    short_side = float(min(rgb.width, rgb.height))
+    if min_side_ratio is not None:
+        side = max(side, short_side * float(min_side_ratio))
+    if max_side_ratio is not None:
+        side = min(side, short_side * float(max_side_ratio))
+    side = max(1, int(round(side)))
+
+    center_x = (left + right) / 2.0
+    center_y = (top + bottom) / 2.0
+    crop_left = int(round(center_x - side / 2.0))
+    crop_top = int(round(center_y - side / 2.0))
+    crop_right = crop_left + side
+    crop_bottom = crop_top + side
+    return rgb.crop((crop_left, crop_top, crop_right, crop_bottom))
+
+
+def extract_cornea_crop_ctx_v1(image, cornea_mask):
+    return _extract_cornea_square_crop(
+        image,
+        cornea_mask,
+        context_ratio=0.28,
+        max_side_ratio=0.98,
+    )
+
+
+def extract_cornea_crop_scale_v1(image, cornea_mask):
+    return _extract_cornea_square_crop(
+        image,
+        cornea_mask,
+        context_ratio=0.18,
+        min_side_ratio=0.72,
+        max_side_ratio=0.98,
+    )
+
+
 def apply_variant(image, variant_name: str, cornea_mask=None):
-    from PIL import Image, ImageFilter, ImageOps  # type: ignore
+    from PIL import Image, ImageChops, ImageFilter, ImageOps  # type: ignore
 
     rgb = image.convert("RGB")
     if variant_name == "raw_rgb":
         return rgb
+    if variant_name == "cornea_roi_context":
+        return extract_cornea_roi_with_context(rgb, cornea_mask)
+    if variant_name == "cornea_crop_ctx_v1":
+        return extract_cornea_crop_ctx_v1(rgb, cornea_mask)
+    if variant_name == "cornea_crop_scale_v1":
+        return extract_cornea_crop_scale_v1(rgb, cornea_mask)
     if variant_name == "blue_channel_removed":
         red, green, blue = rgb.split()
         black = blue.point(lambda _: 0)
@@ -59,6 +174,17 @@ def apply_variant(image, variant_name: str, cornea_mask=None):
             background = Image.new("RGB", rgb.size, (0, 0, 0))
             return Image.composite(composite, background, mask)
         return composite
+    if variant_name == "diagnostics_green_mask":
+        red, green, blue = rgb.split()
+        blue_removed = Image.merge("RGB", (red, green, blue.point(lambda _: 0)))
+        gray = ImageOps.grayscale(blue_removed)
+        blurred = gray.filter(ImageFilter.GaussianBlur(radius=2.0))
+        threshold = otsu_threshold(blurred)
+        otsu_mask = blurred.point(lambda pixel: 255 if pixel >= threshold else 0)
+        if cornea_mask is not None:
+            otsu_mask = ImageChops.multiply(otsu_mask, cornea_mask.convert("L"))
+        green_only = Image.merge("RGB", (Image.new("L", rgb.size, 0), gray, Image.new("L", rgb.size, 0)))
+        return Image.composite(green_only, Image.new("RGB", rgb.size, (0, 0, 0)), otsu_mask)
     if variant_name == "clahe_exploratory":
         try:
             import cv2  # type: ignore
@@ -77,11 +203,15 @@ def apply_variant(image, variant_name: str, cornea_mask=None):
 def available_variants() -> list[str]:
     return [
         "raw_rgb",
+        "cornea_roi_context",
+        "cornea_crop_ctx_v1",
+        "cornea_crop_scale_v1",
         "blue_channel_removed",
         "grayscale",
         "gaussian_blur",
         "otsu_threshold",
         "masked_highlight_proxy",
+        "diagnostics_green_mask",
         "clahe_exploratory",
     ]
 
@@ -98,7 +228,7 @@ def sample_variant_images(
             cornea_mask = None
             if row.get("cornea_mask_path"):
                 try:
-                    cornea_mask = safe_open_image(Path(row["cornea_mask_path"]))
+                    cornea_mask = normalize_cornea_mask(safe_open_image(Path(row["cornea_mask_path"])))
                 except Exception:
                     cornea_mask = None
             images.append((row["image_id"], apply_variant(image, variant_name, cornea_mask)))

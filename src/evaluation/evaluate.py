@@ -18,9 +18,14 @@ def run_inference(model, dataloader, device: str, criterion=None):
         for batch in dataloader:
             images = batch["image"].to(device, non_blocking=True)
             targets = batch["target"].to(device, non_blocking=True)
+            batch["target"] = targets
             logits = model(images)
             if criterion is not None:
-                losses.append(float(criterion(logits, targets).item()))
+                if getattr(criterion, "needs_batch", False):
+                    loss, _ = criterion(logits, batch)
+                    losses.append(float(loss.item()))
+                else:
+                    losses.append(float(criterion(logits, targets).item()))
             probabilities = torch.softmax(logits, dim=1)
             preds = probabilities.argmax(dim=1)
 

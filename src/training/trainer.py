@@ -90,10 +90,14 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device: str, use_am
     for batch in dataloader:
         images = batch["image"].to(device, non_blocking=True)
         targets = batch["target"].to(device, non_blocking=True)
+        batch["target"] = targets
         optimizer.zero_grad(set_to_none=True)
         with torch.cuda.amp.autocast(enabled=use_amp):
             logits = model(images)
-            loss = criterion(logits, targets)
+            if getattr(criterion, "needs_batch", False):
+                loss, _ = criterion(logits, batch)
+            else:
+                loss = criterion(logits, targets)
         if use_amp:
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
