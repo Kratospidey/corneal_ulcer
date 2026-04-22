@@ -43,30 +43,11 @@ Primary output locations:
 - `outputs/debug/2026-04-20_ensemble_improvement_pass/`
 - `outputs/metrics/pattern3__convnextv2_tiny__crop_scale_raw_multiscale__latefusion_v1__holdout_v1__seed42combo/`
 
-## TG rescue branch
+## Archived lines
 
-The latest TG rescue implementation and configs currently live on the research worktree branch, not this freeze branch. If you have that branch checked out, the entrypoint is:
-
-```bash
-PYTHONPATH=src python src/main_train_tg_rescue.py --config <tg_rescue_config.yaml> --device cuda
-```
-
-Frozen summary artifacts for the last rescue pass:
-- `outputs/debug/2026-04-21_post_unified_rescue_pass/summary.md`
-- `outputs/debug/2026-04-21_post_unified_rescue_pass/tg_experiment_summary.csv`
-- `outputs/debug/2026-04-21_post_unified_rescue_pass/selection_stability_report.csv`
-
-## Severity salvage branch
-
-The latest severity salvage implementation and configs currently live on the research worktree branch, not this freeze branch. If you have that branch checked out, the entrypoint is:
-
-```bash
-PYTHONPATH=src python src/run_severity_salvage.py --config <severity_salvage_config.yaml>
-```
-
-Frozen summary artifacts for the last severity salvage pass:
-- `outputs/debug/2026-04-21_post_unified_rescue_pass/summary.md`
-- `outputs/debug/2026-04-21_post_unified_rescue_pass/severity_experiment_summary.csv`
+- TG / type is archived on this foundation.
+- Severity / grade is archived on this foundation.
+- Do not use this repo freeze to continue minor TG or severity tweaks.
 
 ## Where outputs land
 
@@ -77,7 +58,7 @@ Frozen summary artifacts for the last severity salvage pass:
 ## Things to be careful about
 
 - Do not blur the official pattern checkpoint with the late-fusion deployed rule.
-- Do not treat TG as official yet.
-- Do not treat severity as solved.
+- Do not reopen TG here.
+- Do not reopen severity here.
 - Do not use shadow benchmark results as if they were on the official leaderboard.
-- Do not reopen a broad unified 3-task pass before TG is narrowed and severity stays post-hoc.
+- Do not destabilize the official pattern line.
