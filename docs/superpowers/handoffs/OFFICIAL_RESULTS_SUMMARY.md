@@ -18,12 +18,12 @@
 ## Current task status
 
 - Pattern: mature, strongest, recommended for real use
-- TG: experimental; structured TG looks better than flat TG, but `type3` is still unresolved and the branch is not stable enough to promote
-- Severity: experimental / post-hoc; best salvage baseline is `hgb_fallback`, but no salvage model beat the prior best strict severity reference
+- TG: archived / abandoned on this foundation
+- Severity: archived / abandoned on this foundation
 
 ## What a collaborator should use right now
 
 - For official reporting: use the official pattern checkpoint
 - For best current pattern inference: use the deployed late-fusion rule
-- Do not treat TG or severity as official outputs yet
+- Do not treat TG or severity as viable benchmark lines
 - Do not treat unified or shadow results as production guidance

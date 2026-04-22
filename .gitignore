@@ -43,6 +43,17 @@ models/checkpoints/
 models/exported/
 experiments/
 archive/
+outputs/debug/severity_posthoc/
+outputs/debug/tg_punctate_audit/
+outputs/metrics/severity5__posthoc__*/
+outputs/metrics/tg5__*/
+outputs/predictions/severity5__posthoc__*/
+outputs/predictions/tg5__*/
+outputs/reports/severity5__posthoc__*/
+outputs/reports/tg5__*/
+outputs/confusion_matrices/tg5__*/
+outputs/pr_curves/tg5__*/
+outputs/roc_curves/tg5__*/
 
 # Large local zips / datasets
 *.zip

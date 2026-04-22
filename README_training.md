@@ -1,16 +1,17 @@
 # Training Pipelines
 
-This repository’s training stack is leakage-aware and starts from the finished Stage 2 manifest, duplicate checks, split recommendations, and Stage 3 benchmark reports rather than rebuilding dataset understanding from scratch.
+This repository is frozen as a pattern-first project. The training stack remains leakage-aware, but only the pattern line should be treated as current and healthy.
 
 ## Supported Tasks
 
-- `pattern_3class`: primary first task
-- `severity_5class`: supported in code, run only after the 3-class benchmark is stable
-- `binary`: supported in code
+- Active:
+  - `pattern_3class`
+- Archived research artifacts:
+  - `severity_5class`
+  - `task_tg_5class`
+  - `binary`
 
-Deferred from the default benchmark:
-- `task_tg_5class`
-- mask-assisted classification
+Do not treat TG or severity as current continuation targets.
 
 ## Split Policy
 
@@ -31,29 +32,28 @@ Deferred from the default benchmark:
 - `convnextv2_tiny`
 - `convnextv2_base`
 
-The official Stage 3 reference baseline is `pattern3__alexnet__raw_rgb__holdout_v1__seed42`.
-Phase 4 compares ConvNeXtV2 against that exact holdout benchmark instead of inventing a new split.
+The official frozen benchmark line is:
+
+- `pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__holdout_v1__seed42`
+
+The best deployed inference rule is separate:
+
+- `pattern3__convnextv2_tiny__crop_scale_raw_multiscale__latefusion_v1__holdout_v1__seed42combo`
 
 ## Main Commands
 
 ```bash
 micromamba activate corneal-train
 
-python src/main_train.py --config configs/train_resnet18_raw.yaml
-python src/main_train.py --config configs/train_vgg16_raw.yaml
-python src/main_train.py --config configs/train_alexnet_raw.yaml
+PYTHONPATH=src python src/main_eval.py \
+  --config configs/train_convnextv2_tiny_cornea_crop_scale_v1_augplus_v2_weighted_sampler_tempered.yaml \
+  --checkpoint models/exported/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__holdout_v1__seed42/best.pt \
+  --split test \
+  --device cuda
 
-python src/main_train.py --config configs/train_resnet18_paper.yaml
-python src/main_train.py --config configs/train_vgg16_paper.yaml
-python src/main_train.py --config configs/train_alexnet_paper.yaml
-
-python src/main_train.py --config configs/train_convnextv2_raw.yaml
-python src/main_train.py --config configs/train_convnextv2_paper.yaml
-python src/main_train.py --config configs/train_convnextv2_strong.yaml
-
-python src/main_eval.py --config configs/train_resnet18_raw.yaml --checkpoint models/checkpoints/pattern3__resnet18__raw_rgb__holdout_v1__seed42/best.pt
-python src/explainability/explain.py --config configs/explainability.yaml --train-config configs/train_resnet18_raw.yaml --checkpoint models/checkpoints/pattern3__resnet18__raw_rgb__holdout_v1__seed42/best.pt
-python src/inference/predict.py --config configs/inference.yaml --checkpoint models/checkpoints/pattern3__resnet18__raw_rgb__holdout_v1__seed42/best.pt --image-path data/raw/sustech_sysu/rawImages/1.jpg
+PYTHONPATH=src python src/run_ensemble_improvement_pass.py \
+  --output-root outputs \
+  --debug-root outputs/debug/2026-04-20_ensemble_improvement_pass
 ```
 
 ## Outputs
@@ -72,6 +72,5 @@ python src/inference/predict.py --config configs/inference.yaml --checkpoint mod
 - No official split files exist in the dataset; the project generates its own safe split files.
 - No patient IDs exist; do not make patient-level generalization claims.
 - Do not augment before splitting.
-- Do not treat Stage 2 embedding findings as model performance claims.
-- Use balanced accuracy, macro F1, and per-class recall as the main metrics, especially for severity.
-- For ConvNeXtV2, keep raw RGB as the primary path and use `masked_highlight_proxy` only as a controlled comparison on the same split.
+- Do not treat TG or severity as active training fronts here.
+- Do not destabilize the official pattern benchmark.
