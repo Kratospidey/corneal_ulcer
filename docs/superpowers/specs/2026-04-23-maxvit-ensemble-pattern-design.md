@@ -50,7 +50,13 @@ The new MaxViT line must reuse the existing pattern-only discipline already used
   - validation `balanced_accuracy`
 - Prediction export format:
   - `outputs/predictions/<experiment>/<split>_predictions.csv`
-  - probability columns emitted in the fixed class order above
+  - required columns:
+    - `image_id`
+    - `split`
+    - `target_index`
+    - `predicted_index`
+    - one probability column per class in the fixed class order above
+  - export provenance must expose the class order used to generate the file
 - Ensemble execution path:
   - existing probability-space `src/run_late_fusion.py`
 
@@ -129,6 +135,17 @@ The naming stays honest:
 8. freeze the selected validation-tuned rule and evaluate it once on test
 9. write the results handoff and minimal reproducibility doc updates
 
+## Single-Model Sanity Rule
+
+If `MaxViT-Tiny` is clearly weak as a standalone model:
+
+- still complete the required equal-weight ensemble
+- still complete the required single validation-tuned ensemble on the planned small grid
+- do not add extra ensemble variants
+- do not widen the tuning search beyond the planned validation grid
+
+The purpose of this experiment is to test complementarity with the frozen ConvNeXtV2 crop model, not to over-optimize a weak partner.
+
 ## Fairness And Leakage Rules
 
 The implementation and final report must explicitly verify:
@@ -145,6 +162,26 @@ The implementation and final report must explicitly verify:
 - no segmentation or mask-derived feature path used
 
 If any mismatch is found, fix it before reporting results.
+
+## Prediction Export Contract
+
+Every component export used for fusion must share one explicit schema:
+
+- `image_id`
+- `split`
+- `target_index`
+- `predicted_index`
+- one `prob_<class_name>` column per class in fixed class order
+
+In addition, each component must expose class-order provenance that can be validated before fusion. Acceptable provenance can come from the generating config, task config, or a dedicated metadata artifact, but the fusion path must validate it explicitly rather than assume it.
+
+The ensemble path must fail hard if any of the following differ across components:
+
+- required column set
+- probability column names or order
+- class-order provenance
+- sample coverage
+- `target_index` for the same `image_id`
 
 ## Reporting Rules
 
