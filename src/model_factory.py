@@ -28,7 +28,7 @@ def create_model(model_config: dict[str, Any], num_classes: int):
         model = alexnet(weights=weights)
         in_features = model.classifier[-1].in_features
         model.classifier[-1] = torch.nn.Linear(in_features, num_classes)
-    elif model_name.startswith("convnextv2"):
+    elif model_name.startswith(("convnextv2", "swin", "maxvit")):
         import timm  # type: ignore
 
         timm_kwargs = {
@@ -61,6 +61,10 @@ def freeze_feature_extractor(model, model_name: str) -> None:
         for name, parameter in model.named_parameters():
             if not name.startswith("head."):
                 parameter.requires_grad = False
+    elif model_name.startswith(("swin", "maxvit")):
+        for name, parameter in model.named_parameters():
+            if not name.startswith("head."):
+                parameter.requires_grad = False
     else:
         raise ValueError(f"Unsupported model for freezing: {model_name}")
 
@@ -75,4 +79,6 @@ def get_gradcam_target_layer(model, model_name: str):
         return model.features[10]
     if model_name.startswith("convnextv2"):
         return model.stages[-1].blocks[-1].conv_dw
+    if model_name.startswith("swin"):
+        return model.layers[-1].blocks[-1].norm1
     raise ValueError(f"No Grad-CAM target layer for {model_name}")

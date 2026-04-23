@@ -19,7 +19,7 @@ from training.train import run_training_pipeline
 def build_parser() -> ArgumentParser:
     parser = ArgumentParser(description="Stage 3 baseline training entrypoint.")
     parser.add_argument("--config", required=True)
-    parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    parser.add_argument("--device", choices=("auto", "cpu", "cuda", "mps"), default="auto")
     return parser
 
 
@@ -27,12 +27,23 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     logger = setup_logging()
     config = resolve_config(args.config)
+    config["_config_path"] = args.config
     task_config = resolve_config(config["task_config"])
     split_config = resolve_config(config["split_config"])
     task_name = str(task_config["task_name"])
     task_definition = get_task_definition(task_name)
 
     set_seed(int(config.get("seed", 42)))
+    torch_num_threads = int(config.get("torch_num_threads", 0) or 0)
+    if torch_num_threads > 0:
+        import torch  # type: ignore
+
+        torch.set_num_threads(torch_num_threads)
+        if hasattr(torch, "set_num_interop_threads"):
+            try:
+                torch.set_num_interop_threads(max(1, min(torch_num_threads, 4)))
+            except RuntimeError:
+                pass
     experiment_name = build_experiment_name({**config, "task_name": task_name})
     output_dirs = prepare_output_dirs(experiment_name, output_root=config.get("output_root", "outputs"))
     device = resolve_device(args.device)
@@ -52,7 +63,10 @@ def main(argv: list[str] | None = None) -> int:
 
     manifest_df = load_manifest(split_config["manifest_path"])
     split_df = load_split_dataframe(split_path)
-    transforms_by_split = build_transforms(int(config.get("image_size", 224)))
+    transforms_by_split = build_transforms(
+        int(config.get("image_size", 224)),
+        train_profile=str(config.get("train_transform_profile", "default")),
+    )
     datasets = build_datasets(
         manifest_df=manifest_df,
         split_df=split_df,
@@ -62,7 +76,11 @@ def main(argv: list[str] | None = None) -> int:
         preprocessing_mode=str(config.get("preprocessing_mode", "raw_rgb")),
         include_masks=bool(config.get("include_masks", False)),
     )
-    sampler = build_sampler(datasets["train"], str(config.get("sampler", "none")))
+    sampler = build_sampler(
+        datasets["train"],
+        str(config.get("sampler", "none")),
+        sampler_temperature=float(config.get("sampler_temperature", 1.0)),
+    )
     loaders = build_dataloaders(
         datasets=datasets,
         batch_size=int(config.get("batch_size", 16)),
@@ -74,7 +92,12 @@ def main(argv: list[str] | None = None) -> int:
     class_weights = None
     if bool(config.get("use_class_weights", True)):
         class_weights = compute_class_weights(task_definition.class_names, datasets["train"].class_counts()).to(device)
-    criterion = build_loss(str(config.get("loss_name", "weighted_ce")), class_weights=class_weights)
+    criterion = build_loss(
+        str(config.get("loss_name", "weighted_ce")),
+        class_weights=class_weights,
+        focal_gamma=float(config.get("focal_gamma", 2.0)),
+        label_smoothing=float(config.get("label_smoothing", 0.0)),
+    )
     optimizer = build_optimizer(model, config)
     scheduler = build_scheduler(optimizer, config)
 

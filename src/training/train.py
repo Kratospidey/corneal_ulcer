@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 import shutil
 
-from config_utils import write_json
+from config_utils import resolve_config, write_json
 from evaluation.calibration import compute_calibration
 from evaluation.confusion import save_confusion_matrix
 from evaluation.evaluate import run_inference
@@ -62,6 +62,8 @@ def run_training_pipeline(
     shutil.copy2(checkpoint_path, exported_checkpoint_path)
 
     split_metrics: dict[str, dict[str, Any]] = {}
+    task_name = str(resolve_config(training_config["task_config"])["task_name"])
+    source_config_path = training_config.get("_config_path")
     for split_name in ("val", "test"):
         evaluation_payload = run_inference(model, loaders[split_name], device=device, criterion=criterion)
         metrics_payload = compute_classification_metrics(
@@ -78,6 +80,9 @@ def run_training_pipeline(
             class_names=class_names,
             output_dirs=output_dirs,
             split_name=split_name,
+            task_name=task_name,
+            source_config_path=source_config_path,
+            checkpoint_path=exported_checkpoint_path,
         )
         save_confusion_matrix(
             evaluation_payload["y_true"],

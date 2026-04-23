@@ -23,7 +23,7 @@ def build_parser() -> ArgumentParser:
     parser.add_argument("--config", required=True)
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--split", default="test", choices=("train", "val", "test"))
-    parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    parser.add_argument("--device", choices=("auto", "cpu", "cuda", "mps"), default="auto")
     return parser
 
 
@@ -37,6 +37,16 @@ def main(argv: list[str] | None = None) -> int:
     experiment_name = build_experiment_name({**config, "task_name": task_definition.task_name})
     output_dirs = prepare_output_dirs(experiment_name, output_root=config.get("output_root", "outputs"))
     device = resolve_device(args.device)
+    torch_num_threads = int(config.get("torch_num_threads", 0) or 0)
+    if torch_num_threads > 0:
+        import torch  # type: ignore
+
+        torch.set_num_threads(torch_num_threads)
+        if hasattr(torch, "set_num_interop_threads"):
+            try:
+                torch.set_num_interop_threads(max(1, min(torch_num_threads, 4)))
+            except RuntimeError:
+                pass
 
     split_paths = ensure_task_splits(
         manifest_path=split_config["manifest_path"],
@@ -50,7 +60,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     manifest_df = load_manifest(split_config["manifest_path"])
     split_df = load_split_dataframe(config.get("split_file", split_paths["holdout"]))
-    transforms_by_split = build_transforms(int(config.get("image_size", 224)))
+    transforms_by_split = build_transforms(
+        int(config.get("image_size", 224)),
+        train_profile=str(config.get("train_transform_profile", "default")),
+    )
     datasets = build_datasets(
         manifest_df=manifest_df,
         split_df=split_df,
@@ -65,6 +78,7 @@ def main(argv: list[str] | None = None) -> int:
         batch_size=int(config.get("batch_size", 16)),
         num_workers=int(config.get("num_workers", 4)),
         sampler=None,
+        shuffle_train=False,
     )
     model = create_model(config["model"], num_classes=len(task_definition.class_names)).to(device)
 
@@ -75,7 +89,12 @@ def main(argv: list[str] | None = None) -> int:
     class_weights = None
     if bool(config.get("use_class_weights", True)):
         class_weights = compute_class_weights(task_definition.class_names, datasets["train"].class_counts()).to(device)
-    criterion = build_loss(str(config.get("loss_name", "weighted_ce")), class_weights=class_weights)
+    criterion = build_loss(
+        str(config.get("loss_name", "weighted_ce")),
+        class_weights=class_weights,
+        focal_gamma=float(config.get("focal_gamma", 2.0)),
+        label_smoothing=float(config.get("label_smoothing", 0.0)),
+    )
 
     evaluation_payload = run_inference(model, loaders[args.split], device=device, criterion=criterion)
     metrics_payload = compute_classification_metrics(
@@ -85,7 +104,17 @@ def main(argv: list[str] | None = None) -> int:
         class_names=task_definition.class_names,
     )
     calibration_payload = compute_calibration(evaluation_payload["probabilities"], evaluation_payload["y_true"])
-    save_metric_artifacts(evaluation_payload, metrics_payload, calibration_payload, task_definition.class_names, output_dirs, args.split)
+    save_metric_artifacts(
+        evaluation_payload,
+        metrics_payload,
+        calibration_payload,
+        task_definition.class_names,
+        output_dirs,
+        args.split,
+        task_name=task_definition.task_name,
+        source_config_path=args.config,
+        checkpoint_path=args.checkpoint,
+    )
     save_confusion_matrix(
         evaluation_payload["y_true"],
         evaluation_payload["y_pred"],

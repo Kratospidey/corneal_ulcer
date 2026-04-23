@@ -33,7 +33,7 @@ def run_inference(model, dataloader, device: str, criterion=None):
                     "image_id": str(image_id),
                     "split": str(batch["split"][row_index]),
                     "target_index": int(targets.cpu().tolist()[row_index]),
-                    "pred_index": int(preds.cpu().tolist()[row_index]),
+                    "predicted_index": int(preds.cpu().tolist()[row_index]),
                     "confidence": float(probabilities[row_index].max().item()),
                     "raw_image_path": str(batch["raw_image_path"][row_index]),
                     "cornea_mask_path": str(batch["cornea_mask_path"][row_index]) if "cornea_mask_path" in batch else "",

@@ -7,6 +7,12 @@ import json
 
 from config_utils import resolve_config, write_json, write_text
 from evaluation.metrics import flatten_classification_report
+from evaluation.prediction_contract import (
+    build_prediction_provenance,
+    build_prediction_row,
+    validate_prediction_provenance,
+    validate_prediction_rows,
+)
 from experiment_utils import write_csv_rows
 
 
@@ -46,6 +52,9 @@ def save_metric_artifacts(
     class_names: list[str] | tuple[str, ...],
     output_dirs: dict[str, Path],
     split_name: str,
+    task_name: str | None = None,
+    source_config_path: str | Path | None = None,
+    checkpoint_path: str | Path | None = None,
 ) -> None:
     metrics = dict(metrics_payload["metrics"])
     if evaluation_payload["loss"] is not None:
@@ -67,17 +76,39 @@ def save_metric_artifacts(
         evaluation_payload["probabilities"] if evaluation_payload["probabilities"] is not None else [],
         strict=False,
     ):
-        row = {
-            **base_row,
-            "true_label": class_names[target],
-            "pred_label": class_names[pred],
-            "correct": bool(target == pred),
-        }
-        if probs is not None:
-            for class_index, class_name in enumerate(class_names):
-                row[f"prob_{class_name}"] = float(probs[class_index])
-        prediction_rows.append(row)
+        prediction_rows.append(
+            build_prediction_row(
+                base_row=base_row,
+                class_names=class_names,
+                probabilities=[float(value) for value in probs.tolist()],
+                extras={
+                    "confidence": base_row.get("confidence"),
+                    "raw_image_path": base_row.get("raw_image_path", ""),
+                    "cornea_mask_path": base_row.get("cornea_mask_path", ""),
+                    "ulcer_mask_path": base_row.get("ulcer_mask_path", ""),
+                    "true_label": class_names[target],
+                    "pred_label": class_names[pred],
+                    "correct": bool(target == pred),
+                },
+            )
+        )
+    validate_prediction_rows(prediction_rows, class_names=class_names, split_name=split_name)
     write_csv_rows(output_dirs["predictions"] / f"{split_name}_predictions.csv", prediction_rows)
+    if task_name is not None:
+        prediction_provenance = build_prediction_provenance(
+            task_name=task_name,
+            class_names=class_names,
+            split_name=split_name,
+            source_config_path=source_config_path,
+            checkpoint_path=checkpoint_path,
+        )
+        validate_prediction_provenance(
+            prediction_provenance,
+            task_name=task_name,
+            class_names=class_names,
+            split_name=split_name,
+        )
+        write_json(output_dirs["predictions"] / f"{split_name}_prediction_metadata.json", prediction_provenance)
 
 
 def write_experiment_report(
@@ -85,6 +116,7 @@ def write_experiment_report(
     split_name: str,
     metrics: dict[str, Any],
     output_path: str | Path,
+    report_context: dict[str, Any] | None = None,
 ) -> None:
     lines = [
         f"# {experiment_name} {split_name.title()} Summary",
@@ -102,6 +134,16 @@ def write_experiment_report(
         "- Balanced accuracy, macro F1, and per-class recall should be treated as the primary medical-classification signals.",
         "- This report summarizes computed project metrics only.",
     ]
+    if report_context:
+        context_lines = []
+        if report_context.get("artifact_path") is not None:
+            context_lines.append(f"- Artifact path: {report_context['artifact_path']}")
+        if report_context.get("split_file") is not None:
+            context_lines.append(f"- Split file: {report_context['split_file']}")
+        if report_context.get("seed") is not None:
+            context_lines.append(f"- Seed: {report_context['seed']}")
+        if context_lines:
+            lines.extend(["", "## Context", "", *context_lines])
     write_text(output_path, "\n".join(lines))
 
 
@@ -119,13 +161,11 @@ def write_baseline_rollup_summaries(output_root: str | Path = "outputs") -> None
         return
 
     pattern_rows = rank_rows([row for row in rows if row["task"] == "pattern3"])
-    severity_rows = rank_rows([row for row in rows if row["task"] == "severity5"])
-
-    write_text(report_root / "baseline_results_summary.md", build_results_summary(pattern_rows, severity_rows, "Baseline"))
-    write_text(report_root / "baseline_model_comparison_summary.md", build_baseline_model_comparison_summary(pattern_rows, severity_rows))
+    write_text(report_root / "baseline_results_summary.md", build_results_summary(pattern_rows, "Baseline"))
+    write_text(report_root / "baseline_model_comparison_summary.md", build_baseline_model_comparison_summary(pattern_rows))
     write_text(report_root / "baseline_error_analysis_summary.md", build_error_analysis_summary(rows, "Baseline"))
     write_text(report_root / "baseline_explainability_summary.md", build_explainability_summary(rows, output_root, "Baseline"))
-    write_text(report_root / "best_baseline_recommendation.md", build_best_recommendation(pattern_rows, severity_rows))
+    write_text(report_root / "best_baseline_recommendation.md", build_best_recommendation(pattern_rows))
 
 
 def write_convnextv2_rollup_summaries(output_root: str | Path = "outputs") -> None:
@@ -147,13 +187,11 @@ def write_convnextv2_rollup_summaries(output_root: str | Path = "outputs") -> No
         return
 
     pattern_rows = rank_rows([row for row in convnext_rows if row["task"] == "pattern3"])
-    severity_rows = rank_rows([row for row in convnext_rows if row["task"] == "severity5"])
-
-    write_text(report_root / "convnextv2_results_summary.md", build_results_summary(pattern_rows, severity_rows, "ConvNeXtV2"))
+    write_text(report_root / "convnextv2_results_summary.md", build_results_summary(pattern_rows, "ConvNeXtV2"))
     write_text(report_root / "convnextv2_vs_baseline_summary.md", build_convnext_vs_baseline_summary(pattern_rows, baseline_reference))
     write_text(report_root / "convnextv2_error_analysis_summary.md", build_error_analysis_summary(convnext_rows, "ConvNeXtV2"))
     write_text(report_root / "convnextv2_explainability_summary.md", build_explainability_summary(convnext_rows, output_root, "ConvNeXtV2"))
-    write_text(report_root / "final_model_recommendation.md", build_final_model_recommendation(pattern_rows, severity_rows, baseline_reference))
+    write_text(report_root / "final_model_recommendation.md", build_final_model_recommendation(pattern_rows, baseline_reference))
 
 
 def collect_experiment_rows(output_root: Path) -> list[dict[str, Any]]:
@@ -234,7 +272,7 @@ def load_json_if_exists(path: Path) -> dict[str, Any]:
 def parse_experiment_name(experiment_name: str) -> tuple[str, str, str, str, str]:
     parts = experiment_name.split("__")
     if len(parts) >= 5:
-        return parts[0], parts[1], parts[2], parts[3], parts[4]
+        return parts[0], parts[1], parts[2], parts[-2], parts[-1]
     return experiment_name, "unknown", "unknown", "unknown", "unknown"
 
 
@@ -307,7 +345,7 @@ def format_run_line(row: dict[str, Any]) -> str:
     )
 
 
-def build_results_summary(pattern_rows: list[dict[str, Any]], severity_rows: list[dict[str, Any]], family_name: str) -> str:
+def build_results_summary(pattern_rows: list[dict[str, Any]], family_name: str) -> str:
     lines = [
         f"# {family_name} Results Summary",
         "",
@@ -318,15 +356,11 @@ def build_results_summary(pattern_rows: list[dict[str, Any]], severity_rows: lis
         lines.extend(format_run_line(row) for row in pattern_rows)
     else:
         lines.append("- No completed pattern 3-class benchmark runs are available yet.")
-    lines.extend(["", "## Severity 5-Class Extension", ""])
-    if severity_rows:
-        lines.extend(format_run_line(row) for row in severity_rows)
-    else:
-        lines.append("- No completed severity extension run is available yet.")
+    lines.extend(["", "## Scope", "", "- The live project surface is pattern-only. TG, severity, and binary runs are historical only."])
     return "\n".join(lines)
 
 
-def build_baseline_model_comparison_summary(pattern_rows: list[dict[str, Any]], severity_rows: list[dict[str, Any]]) -> str:
+def build_baseline_model_comparison_summary(pattern_rows: list[dict[str, Any]]) -> str:
     lines = ["# Baseline Model Comparison Summary", ""]
     if not pattern_rows:
         lines.append("- No completed pattern 3-class benchmark runs are available yet.")
@@ -358,8 +392,6 @@ def build_baseline_model_comparison_summary(pattern_rows: list[dict[str, Any]], 
             lines.append(f"- {model_name}: only raw_rgb run is available.")
         elif masked_row:
             lines.append(f"- {model_name}: only masked_highlight_proxy run is available.")
-    if severity_rows:
-        lines.extend(["", "## Severity Extension", "", f"- Executed severity run: {severity_rows[0]['experiment_name']}"])
     return "\n".join(lines)
 
 
@@ -408,7 +440,7 @@ def build_explainability_summary(rows: list[dict[str, Any]], output_root: Path, 
     return "\n".join(lines)
 
 
-def build_best_recommendation(pattern_rows: list[dict[str, Any]], severity_rows: list[dict[str, Any]]) -> str:
+def build_best_recommendation(pattern_rows: list[dict[str, Any]]) -> str:
     lines = ["# Best Baseline Recommendation", ""]
     if not pattern_rows:
         lines.append("- No executed baseline ranking is available yet.")
@@ -426,8 +458,6 @@ def build_best_recommendation(pattern_rows: list[dict[str, Any]], severity_rows:
         lines.append("- The top-scoring and most-stable completed pattern baseline are the same configuration.")
     else:
         lines.append("- The top-scoring and most-stable completed pattern baselines differ; carry both into interpretation.")
-    if severity_rows:
-        lines.append(f"- Severity extension executed with: {severity_rows[0]['experiment_name']}")
     lines.append("- Use balanced accuracy, macro F1, and per-class recall as the ranking basis, not plain accuracy.")
     lines.append("- These recommendations summarize computed project results only.")
     return "\n".join(lines)
@@ -493,7 +523,6 @@ def build_convnext_vs_baseline_summary(pattern_rows: list[dict[str, Any]], basel
 
 def build_final_model_recommendation(
     pattern_rows: list[dict[str, Any]],
-    severity_rows: list[dict[str, Any]],
     baseline_reference: dict[str, Any] | None,
 ) -> str:
     lines = ["# Final Model Recommendation", ""]
@@ -516,8 +545,6 @@ def build_final_model_recommendation(
             lines.append("- Recommendation: keep the Stage 3 AlexNet raw baseline as the official reference and treat ConvNeXtV2 as exploratory or task-specific.")
     else:
         lines.append("- No official baseline reference was available for direct comparison.")
-    if severity_rows:
-        lines.append(f"- Severity extension executed with: {severity_rows[0]['experiment_name']}")
     lines.append("- Raw RGB remains the default path unless a matched masked_highlight_proxy run shows a real holdout gain.")
     lines.append("- Ranking is based on balanced accuracy first, then macro F1, then per-class recall review.")
     lines.append("- These recommendations summarize computed project results only.")
