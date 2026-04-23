@@ -55,10 +55,16 @@ No other major modeling change is allowed in the base comparison.
 
 ### Default Plan
 
-Use `SLID` as the primary external dataset for anatomy-aware slit-lamp warm-start:
+Use `SLID` as the primary external dataset for anatomy-aware slit-lamp warm-start.
+
+The default upstream task for the base experiment is:
+
+- `SLID` cornea-mask supervision
+- one verified supervision target only
+- no multi-objective expansion in the base run unless the audit shows that a richer target is both simple and clearly justified
 
 1. audit the existing local `SLID` archive and prepared artifacts
-2. define one verified upstream learning task from audited `SLID` labels
+2. verify that `SLID` cornea-mask supervision is actually supported by the audited artifacts
 3. train an external pretraining stage that exports ConvNeXtV2 backbone weights
 4. fine-tune the canonical pattern classifier on SUSTech using that backbone initialization
 
@@ -108,6 +114,10 @@ Reused local preparation is allowed only if current-branch code can consume it c
 
 The warm-start lineage must be explicit:
 
+- default initialization chain:
+  - ImageNet-pretrained `convnextv2_tiny` backbone
+  - `SLID` external pretraining on cornea-mask supervision
+  - SUSTech `pattern_3class` fine-tune
 - the external stage exports ConvNeXtV2 backbone weights
 - the downstream `pattern_3class` classifier head is freshly initialized
 - any reused historical checkpoint may be inspected for context or sanity checking, but is not acceptable as the final claimed result
@@ -145,7 +155,9 @@ The required executed rows are:
 3. current-branch canonical ConvNeXtV2 control with no external warm-start
 4. current-branch `SLID` warm-start ConvNeXtV2 line
 
-An optional fifth row is allowed only if actually executed and justified:
+An optional fifth row is allowed only if the base four-row comparison executes cleanly first, and only if it does not delay or bloat the core experiment.
+
+The optional fifth row is allowed only if actually executed and justified:
 
 - `SLIT-Net`-based line, or
 - one tightly scoped second `SLID` variant needed for a fair comparison
@@ -153,13 +165,17 @@ An optional fifth row is allowed only if actually executed and justified:
 The base experiment names should stay honest and reproducible. For example:
 
 - external stage:
-  - `pretrain__slid__convnextv2_tiny__<task>__seed42`
+  - `pretrain__slid__convnextv2_tiny__cornea_mask__seed42`
 - downstream control:
   - `pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__holdout_v1__seed42__currentbranch_control`
 - downstream warm-start:
   - `pattern3__convnextv2_tiny__external_slitlamp_pretrain__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__holdout_v1__seed42`
 
-Exact names may be refined during implementation, but they must clearly separate upstream stage, control, and final pattern result.
+Exact names may be refined during implementation, but they must obey these lineage rules:
+
+- every external checkpoint name must identify the dataset and upstream task
+- every downstream fine-tune name must identify that it came from external slit-lamp pretraining
+- control and warm-start names must remain visually distinct
 
 ## Success Bar
 
