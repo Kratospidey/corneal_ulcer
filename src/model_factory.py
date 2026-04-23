@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 
@@ -67,6 +68,66 @@ def freeze_feature_extractor(model, model_name: str) -> None:
                 parameter.requires_grad = False
     else:
         raise ValueError(f"Unsupported model for freezing: {model_name}")
+
+
+def _extract_backbone_state_dict(checkpoint_payload: dict[str, Any]) -> dict[str, Any]:
+    if "backbone_state_dict" in checkpoint_payload:
+        return dict(checkpoint_payload["backbone_state_dict"])
+    state_dict = checkpoint_payload.get("model_state_dict", checkpoint_payload)
+    return {key: value for key, value in state_dict.items() if not key.startswith("head.")}
+
+
+def load_backbone_warmstart(model, checkpoint_path: str | Path) -> dict[str, Any]:
+    import torch  # type: ignore
+
+    checkpoint_path = Path(checkpoint_path)
+    if not checkpoint_path.exists():
+        raise FileNotFoundError(f"Warm-start checkpoint not found: {checkpoint_path}")
+    checkpoint_payload = torch.load(checkpoint_path, map_location="cpu")
+    backbone_state = _extract_backbone_state_dict(checkpoint_payload)
+    target_state = model.state_dict()
+
+    if not backbone_state:
+        raise ValueError(f"No backbone weights found in warm-start checkpoint: {checkpoint_path}")
+
+    unexpected = [key for key in backbone_state if key not in target_state]
+    if unexpected:
+        raise ValueError(
+            f"Warm-start checkpoint contains unexpected backbone keys for this model: {unexpected[:10]}"
+        )
+
+    mismatched = []
+    for key, value in backbone_state.items():
+        if tuple(target_state[key].shape) != tuple(value.shape):
+            mismatched.append((key, tuple(value.shape), tuple(target_state[key].shape)))
+    if mismatched:
+        preview = ", ".join(f"{key}: {src} -> {dst}" for key, src, dst in mismatched[:10])
+        raise ValueError(f"Warm-start backbone shape mismatch: {preview}")
+
+    missing_backbone = [
+        key
+        for key in target_state
+        if not key.startswith("head.") and key not in backbone_state
+    ]
+    if missing_backbone:
+        raise ValueError(
+            f"Warm-start checkpoint is missing required backbone keys: {missing_backbone[:10]}"
+        )
+
+    missing_keys, unexpected_keys = model.load_state_dict(backbone_state, strict=False)
+    bad_missing = [key for key in missing_keys if not key.startswith("head.")]
+    if bad_missing or unexpected_keys:
+        raise ValueError(
+            f"Warm-start load produced invalid missing/unexpected keys: missing={bad_missing[:10]}, "
+            f"unexpected={unexpected_keys[:10]}"
+        )
+
+    return {
+        "checkpoint_path": str(checkpoint_path),
+        "loaded_backbone_keys": len(backbone_state),
+        "missing_head_keys": list(missing_keys),
+        "external_pretrain": checkpoint_payload.get("external_pretrain", {}),
+    }
 
 
 def get_gradcam_target_layer(model, model_name: str):
