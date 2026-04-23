@@ -155,9 +155,7 @@ The required executed rows are:
 3. current-branch canonical ConvNeXtV2 control with no external warm-start
 4. current-branch `SLID` warm-start ConvNeXtV2 line
 
-An optional fifth row is allowed only if the base four-row comparison executes cleanly first, and only if it does not delay or bloat the core experiment.
-
-The optional fifth row is allowed only if actually executed and justified:
+An optional fifth row is allowed only if the base four-row comparison executes cleanly first, and only if it is actually executed, justified, and does not delay or bloat the core experiment. It may be either:
 
 - `SLIT-Net`-based line, or
 - one tightly scoped second `SLID` variant needed for a fair comparison
