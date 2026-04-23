@@ -121,6 +121,7 @@ Completion rule:
 - Modify: `src/model_factory.py`
 
 - [ ] Add one external pretraining entrypoint for `SLID` cornea-mask supervision.
+- [ ] Implement the base upstream task explicitly as binary cornea segmentation from audited `SLID` cornea masks, not as an ambiguous generic auxiliary objective.
 - [ ] Reuse the existing ConvNeXtV2 / `timm` model construction path where practical.
 - [ ] Ensure the exported checkpoint name identifies both dataset and upstream task:
   - `pretrain__slid__convnextv2_tiny__cornea_mask__seed42`
@@ -140,6 +141,8 @@ Completion rule:
 
 - [ ] Add one explicit warm-start config field, e.g. `warmstart_checkpoint`.
 - [ ] Load only the backbone weights by default.
+- [ ] Add a hard warm-start compatibility check that fails clearly if the upstream checkpoint backbone shape does not match the downstream `convnextv2_tiny` backbone.
+- [ ] Do not silently partially load mismatched backbone weights unless that behavior is explicitly implemented and logged.
 - [ ] Reinitialize the downstream `pattern_3class` classifier head explicitly.
 - [ ] Add one current-branch control config with no external warm-start.
 - [ ] Add one downstream warm-start config whose name identifies external slit-lamp pretraining:
@@ -155,6 +158,7 @@ Completion rule:
 - Output only
 
 - [ ] Train the current-branch canonical no-warm-start control.
+- [ ] Use the explicit `__currentbranch_control` config for the control run rather than substituting an older equivalent config path.
 - [ ] Run `val` and `test` evaluation through `src/main_eval.py`.
 - [ ] Record exact commands and artifact paths for the results doc.
 - [ ] If local drift makes the control clearly inconsistent or unreproducible, record that limitation and continue with frozen-baseline comparison honesty intact.
@@ -171,6 +175,7 @@ Completion rule:
 - [ ] Fine-tune the downstream pattern model from that external checkpoint using the fixed pattern recipe.
 - [ ] Run `val` and `test` evaluation through `src/main_eval.py`.
 - [ ] Record exact pretrain checkpoint path and exact downstream warm-start source used.
+- [ ] Persist warm-start lineage automatically into downstream run metadata and reports so the exact upstream checkpoint path is recorded with the executed experiment.
 
 Completion rule:
 - one full current-branch external-signal experiment exists end to end with explicit checkpoint lineage.
@@ -184,6 +189,9 @@ Completion rule:
 - [ ] Verify no change to `pattern_3class` label definitions.
 - [ ] Verify no external-data relabeling of SUSTech targets.
 - [ ] Verify no val/test-driven preprocessing or model selection.
+- [ ] Check filename/path overlaps between external data and SUSTech data where practical.
+- [ ] Check duplicate IDs or manifest collisions across datasets where practical.
+- [ ] Run hash-based or exact-file duplicate checks where practical and document what was checked.
 - [ ] Check for obvious overlap or contamination signals between external data and SUSTech evaluation data.
 - [ ] If overlap is unclear and material, stop and document it plainly.
 
@@ -205,6 +213,7 @@ Completion rule:
   - optional fifth row only if the base 4-row comparison already finished cleanly
 - [ ] Report val/test balanced accuracy and macro F1.
 - [ ] Report delta vs the frozen official benchmark and the frozen deployed rule.
+- [ ] Report delta vs current-branch control so the effect of `SLID` in the current branch environment is visible.
 - [ ] Report whether the result is promising, strong, or not worth keeping using the predeclared bar.
 - [ ] If the warm-start loses, say so plainly.
 - [ ] If old checkpoints are mentioned, mark them historical-only.
