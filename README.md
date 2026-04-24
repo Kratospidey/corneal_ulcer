@@ -152,6 +152,71 @@ The benchmark was re-stabilized after a recipe drift regression. The frozen fix 
 | Sharpness augmentation | `sharpness_factor=1.15`, `p=0.15` | Small local-detail perturbation |
 | Normalization | ImageNet mean/std | `(0.485, 0.456, 0.406)` and `(0.229, 0.224, 0.225)` |
 
+### What Each Image Becomes
+
+```mermaid
+flowchart LR
+    accTitle: Per Image Transformation Path
+    accDescr: How a single raw slit-lamp image is transformed for train, validation, and test in the frozen ConvNeXtV2 Tiny pipeline.
+
+    raw["📷 Raw slit-lamp RGB image"]
+    mask["🫧 Cornea mask"]
+    crop["🎯 cornea_crop_scale_v1<br/>square crop with retained context"]
+    resize_train["📐 Resize to 256 x 256"]
+    crop_train["✂️ RandomResizedCrop to 224 x 224"]
+    aug_train["🧪 Flip + affine + color jitter + blur + sharpness"]
+    tensor_train["🧱 Tensor + ImageNet normalization"]
+    eval_resize["📏 Deterministic resize to 224 x 224"]
+    tensor_eval["🧱 Tensor + ImageNet normalization"]
+    train_out["🚂 Train sample"]
+    val_out["🔎 Val sample"]
+    test_out["🧪 Test sample"]
+
+    raw --> crop
+    mask --> crop
+    crop --> resize_train --> crop_train --> aug_train --> tensor_train --> train_out
+    crop --> eval_resize --> tensor_eval --> val_out
+    crop --> eval_resize --> tensor_eval --> test_out
+
+    classDef data fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e3a5f
+    classDef prep fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
+    classDef out fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
+
+    class raw,mask data
+    class crop,resize_train,crop_train,aug_train,eval_resize,tensor_train,tensor_eval prep
+    class train_out,val_out,test_out out
+```
+
+The important distinction is that the repo does not pre-render augmented files. Every train sample is generated online from the raw RGB image at `__getitem__` time. That means one stored raw image can yield many different train-time tensors across epochs, while validation and test always stay deterministic.
+
+### Online Augmentation Semantics
+
+| Quantity | Frozen value | Interpretation |
+| --- | ---: | --- |
+| Stored raw training images | `498` | Physical train images listed in the manifest and split file |
+| Stored validation images | `106` | Deterministic validation set |
+| Stored test images | `108` | Deterministic test set |
+| Training samples drawn per epoch | `498` | `WeightedRandomSampler(..., num_samples=len(train_set), replacement=True)` |
+| Validation samples per epoch | `106` | No replacement, no random augmentation |
+| Test samples per evaluation | `108` | No replacement, no random augmentation |
+| Maximum train draws over the config budget | `5,976` | `498 x 12` if the run uses all configured epochs |
+| Fixed offline augmented dataset size | none | Augmentations are online, not saved as extra files |
+| Effective unique train images | not finite in practice | Random crop, affine, jitter, blur, and sharpness produce many distinct views of the same raw image |
+
+For paper wording, the accurate statement is: the training split contains `498` stored raw images, but the model is trained with online augmentation and weighted sampling, so each epoch sees `498` sampled training presentations rather than a fixed expanded offline dataset. Because the transforms are stochastic and continuous-valued, the number of distinct train-time image variants is effectively unbounded.
+
+### Expected Class Exposure Per Epoch
+
+The tempered sampler uses per-sample weight `(1 / class_count)^0.65` with replacement. That does not flatten the class distribution completely; it partially rebalances it.
+
+| Class | Raw train count | Raw share | Expected sampler share | Expected draws per epoch |
+| --- | ---: | ---: | ---: | ---: |
+| `point_like` | `251` | `50.4%` | `39.8%` | `198.0` |
+| `point_flaky_mixed` | `183` | `36.7%` | `35.6%` | `177.3` |
+| `flaky` | `64` | `12.9%` | `24.6%` | `122.7` |
+
+This is why the pipeline gets more minority exposure without switching to a fully class-balanced sampler. The rare `flaky` class is seen much more often than its raw prevalence would suggest, but the sampler still preserves some natural frequency structure.
+
 ### ConvNeXtV2 Tiny Architecture
 
 | Component | Frozen value | Explanation |
@@ -200,6 +265,18 @@ The benchmark was re-stabilized after a recipe drift regression. The frozen fix 
 | Checkpoint criterion | best validation balanced accuracy | Saved to `best.pt` |
 | Original frozen checkpoint history | not fully preserved | Final weights and metrics are preserved, but the original epoch-by-epoch CSV is not |
 | Preserved current-branch control rerun | `9` epochs total, best epoch `5` | Available in `outputs/metrics/...__currentbranch_control/` and should not be confused with the official checkpoint lineage |
+
+### Pipeline Walkthrough
+
+1. The manifest supplies `raw_image_path`, `cornea_mask_path`, and `task_pattern_3class` for each `image_id`.
+2. The frozen holdout split assigns each image to `train`, `val`, or `test`.
+3. The dataset loader opens the raw RGB image and, for the official path, also loads the cornea mask.
+4. `cornea_crop_scale_v1` converts the cornea mask to a normalized binary mask, finds the cornea bounding box, and extracts a square crop with context.
+5. The train split then applies the restored `pattern_augplus_v2` stack online; validation and test apply only deterministic resize plus normalization.
+6. The train loader uses a tempered weighted sampler with replacement, so one epoch is defined as `498` sampled training presentations.
+7. ConvNeXtV2 Tiny receives `224 x 224` normalized tensors and outputs three logits through a `768 -> 3` linear head.
+8. Training uses weighted cross-entropy, AdamW, cosine annealing, gradient clipping, and early stopping on validation balanced accuracy.
+9. The selected checkpoint is evaluated on the frozen test set, then the repo writes metrics, reports, confusion matrices, ROC/PR curves, reliability artifacts, and Grad-CAM figures.
 
 ## Official Test Metrics
 
