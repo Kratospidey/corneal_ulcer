@@ -102,12 +102,13 @@ def build_dataloaders(
     batch_size: int,
     num_workers: int,
     sampler=None,
+    shuffle_train: bool = True,
 ) -> dict[str, DataLoader]:
     loaders = {
         "train": DataLoader(
             datasets["train"],
             batch_size=batch_size,
-            shuffle=sampler is None,
+            shuffle=bool(shuffle_train and sampler is None),
             sampler=sampler,
             num_workers=num_workers,
             pin_memory=True,

@@ -161,7 +161,7 @@ def manifest_support_summary(manifest: list[dict[str, Any]]) -> dict[str, Any]:
         "task_pattern_3class_supported": bool(Counter(row["task_pattern_3class"] for row in manifest)),
         "task_severity_5class_supported": bool(Counter(row["task_severity_5class"] for row in manifest)),
         "task_tg_5class_supported": bool(Counter(row["task_tg_5class"] for row in manifest)),
-        "binary_supported": True,
+        "binary_supported": False,
         "segmentation_assisted_supported": any(bool(row["has_ulcer_mask"]) for row in manifest),
     }
 
@@ -202,7 +202,6 @@ def manifest_overview_markdown(manifest: list[dict[str, Any]], audit: list[dict[
             "## Task Support",
             "",
             f"- Pattern 3-class task rows: {sum(1 for _ in manifest)}",
-            f"- Binary task rows: {sum(1 for _ in manifest)}",
             f"- Segmentation-assisted rows: {sum(1 for row in manifest if row['has_ulcer_mask'])}",
         ]
     )

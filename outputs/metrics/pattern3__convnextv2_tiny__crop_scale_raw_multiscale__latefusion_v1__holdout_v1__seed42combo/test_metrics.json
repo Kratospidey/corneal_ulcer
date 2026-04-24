@@ -1,43 +1,70 @@
 {
-  "accuracy": 0.8518518518518519,
-  "balanced_accuracy": 0.8563222384360595,
+  "accuracy": 0.7962962962962963,
+  "artifact_path": "outputs/reports/pattern3__convnextv2_tiny__crop_scale_raw_multiscale__latefusion_v1__holdout_v1__seed42combo/test_summary.md",
+  "balanced_accuracy": 0.7764343455400367,
   "classification_report": {
-    "accuracy": 0.8518518518518519,
+    "accuracy": 0.7962962962962963,
     "flaky": {
-      "f1-score": 0.7058823529411765,
-      "precision": 0.5714285714285714,
-      "recall": 0.9230769230769231,
+      "f1-score": 0.6060606060606061,
+      "precision": 0.5,
+      "recall": 0.7692307692307693,
       "support": 13.0
     },
     "macro avg": {
-      "f1-score": 0.8114845938375351,
-      "precision": 0.8111658456486044,
-      "recall": 0.8563222384360595,
+      "f1-score": 0.7437707050383108,
+      "precision": 0.742911877394636,
+      "recall": 0.7764343455400367,
       "support": 108.0
     },
     "point_flaky_mixed": {
-      "f1-score": 0.8,
-      "precision": 0.9655172413793104,
-      "recall": 0.6829268292682927,
+      "f1-score": 0.7323943661971831,
+      "precision": 0.8666666666666667,
+      "recall": 0.6341463414634146,
       "support": 41.0
     },
     "point_like": {
-      "f1-score": 0.9285714285714286,
-      "precision": 0.896551724137931,
-      "recall": 0.9629629629629629,
+      "f1-score": 0.8928571428571429,
+      "precision": 0.8620689655172413,
+      "recall": 0.9259259259259259,
       "support": 54.0
     },
     "weighted avg": {
-      "f1-score": 0.8529567382508559,
-      "precision": 0.8835978835978836,
-      "recall": 0.8518518518518519,
+      "f1-score": 0.7974189130292416,
+      "precision": 0.8202320136228182,
+      "recall": 0.7962962962962963,
       "support": 108.0
     }
   },
-  "ece": 0.09181143286803958,
-  "macro_f1": 0.8114845938375351,
-  "mean_brier_like": 0.12422432700069715,
-  "pr_auc_macro_ovr": 0.918049929161367,
-  "roc_auc_macro_ovr": 0.959360422600893,
-  "weighted_f1": 0.8529567382508559
+  "decision_rule": "weighted_average",
+  "delta_vs_deployed_rule_ba": -0.07988789289602283,
+  "delta_vs_deployed_rule_macro_f1": -0.06771388879922435,
+  "delta_vs_official_single_ba": -0.07175781159520989,
+  "delta_vs_official_single_macro_f1": -0.05519409827431876,
+  "macro_f1": 0.7437707050383108,
+  "normalization_mode": "probability",
+  "pr_auc_macro_ovr": 0.833864086156269,
+  "promotion_reference": {
+    "deployed_rule": {
+      "artifact_path": "outputs/metrics/pattern3__convnextv2_tiny__crop_scale_raw_multiscale__latefusion_v1__holdout_v1__seed42combo/test_metrics.json",
+      "balanced_accuracy": 0.8563222384360595,
+      "experiment_name": "pattern3__convnextv2_tiny__crop_scale_raw_multiscale__latefusion_v1__holdout_v1__seed42combo",
+      "macro_f1": 0.8114845938375351,
+      "task_name": "pattern_3class"
+    },
+    "official_single": {
+      "artifact_path": "outputs/metrics/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__holdout_v1__seed42/test_metrics.json",
+      "balanced_accuracy": 0.8481921571352465,
+      "experiment_name": "pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__holdout_v1__seed42",
+      "macro_f1": 0.7989648033126295,
+      "task_name": "pattern_3class"
+    }
+  },
+  "roc_auc_macro_ovr": 0.9312142487378132,
+  "seed": 42,
+  "split_file": "data/interim/split_files/pattern_3class_holdout.csv",
+  "view_weights": {
+    "cornea_crop_scale_v1": 0.65,
+    "raw_rgb": 0.35
+  },
+  "weighted_f1": 0.7974189130292416
 }

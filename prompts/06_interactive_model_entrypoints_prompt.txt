@@ -1,3 +1,5 @@
+ARCHIVED PROMPT: historical interactive launcher instructions kept for traceability. The live repo is pattern-only; do not use this prompt to revive severity, TG, or binary continuation work.
+
 You are a senior ML tooling and developer-experience engineer.
 
 You are working inside an existing corneal ulcer classification repository that already contains:
@@ -64,7 +66,7 @@ I want to be able to do things like:
    python alexnet.py
    Then be asked:
    - Choose action: train / eval / explain / predict
-   - Choose task: pattern3 / severity5 / binary
+   - Choose task: pattern3
    - Choose preprocessing: raw_rgb / masked_highlight_proxy
    - Choose device: auto / cuda / cpu
    - Use recommended config? yes/no
@@ -259,8 +261,7 @@ MODEL-SPECIFIC RULES
 AlexNet / ResNet18 / VGG16:
 - default to the baseline configs created in Stage 3
 - support pattern3 first
-- support severity if the matching config exists
-- support binary if the matching config exists
+- do not revive severity or binary support in the live repo surface
 
 ConvNeXtV2:
 - support variant selection if multiple variants/configs exist

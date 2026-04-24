@@ -79,11 +79,16 @@ def write_csv_rows(path: str | Path, rows: list[dict[str, Any]]) -> None:
 
 
 def resolve_device(requested: str = "auto") -> str:
-    if requested in {"cpu", "cuda"}:
+    if requested in {"cpu", "cuda", "mps"}:
         return requested
     try:
         import torch  # type: ignore
 
-        return "cuda" if torch.cuda.is_available() else "cpu"
+        if torch.cuda.is_available():
+            return "cuda"
+        mps_backend = getattr(torch.backends, "mps", None)
+        if mps_backend is not None and mps_backend.is_available():
+            return "mps"
+        return "cpu"
     except Exception:
         return "cpu"

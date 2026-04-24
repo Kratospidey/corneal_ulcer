@@ -121,12 +121,8 @@ def summarize_small_data_risk(stats_rows: list[dict[str, object]], manifest_rows
     readable_count = sum(1 for row in stats_rows if row.get("readable"))
     unreadable_count = len(stats_rows) - readable_count
     pattern_counts: dict[str, int] = {}
-    severity_counts: dict[str, int] = {}
-    tg_counts: dict[str, int] = {}
     for row in manifest_rows:
         pattern_counts[row["task_pattern_3class"]] = pattern_counts.get(row["task_pattern_3class"], 0) + 1
-        severity_counts[row["task_severity_5class"]] = severity_counts.get(row["task_severity_5class"], 0) + 1
-        tg_counts[row["task_tg_5class"]] = tg_counts.get(row["task_tg_5class"], 0) + 1
 
     def imbalance_ratio(counter: dict[str, int]) -> float:
         if not counter:
@@ -137,7 +133,5 @@ def summarize_small_data_risk(stats_rows: list[dict[str, object]], manifest_rows
     return [
         {"risk": "readability_failures", "value": unreadable_count},
         {"risk": "pattern_imbalance_ratio", "value": round(imbalance_ratio(pattern_counts), 6)},
-        {"risk": "severity_imbalance_ratio", "value": round(imbalance_ratio(severity_counts), 6)},
-        {"risk": "tg_imbalance_ratio", "value": round(imbalance_ratio(tg_counts), 6)},
         {"risk": "ulcer_mask_subset_ratio", "value": round(sum(1 for row in manifest_rows if row["has_ulcer_mask"]) / max(1, len(manifest_rows)), 6)},
     ]

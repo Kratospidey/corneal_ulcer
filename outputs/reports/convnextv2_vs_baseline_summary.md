@@ -1,9 +1,9 @@
 # ConvNeXtV2 vs Baseline Summary
 
-- Best ConvNeXtV2 pattern run by ranking: pattern3__convnextv2_tiny__raw_rgb__holdout_v1__seed42
+- Best ConvNeXtV2 pattern run by ranking: pattern3__convnextv2_tiny_plus_maxvit_tiny__avgprob_valtuned__holdout_v1__seed42
 - Official Stage 3 baseline reference: pattern3__alexnet__raw_rgb__holdout_v1__seed42
-- Balanced accuracy delta vs baseline: -0.0220
-- Macro F1 delta vs baseline: +0.0191
+- Balanced accuracy delta vs baseline: +0.1082
+- Macro F1 delta vs baseline: +0.1127
 - Baseline reference metrics: balanced_accuracy=0.718272994695759, macro_f1=0.681608005521049
 
 ## Raw vs Masked Comparison
@@ -16,4 +16,4 @@
 - Stronger variant comparison: pattern3__convnextv2_base__raw_rgb__holdout_v1__seed42 vs pattern3__convnextv2_tiny__raw_rgb__holdout_v1__seed42
 - Balanced accuracy delta: -0.1273
 - Macro F1 delta: -0.1306
-- Cost proxy: stronger checkpoint=1003.97 MB batch_size=None vs tiny checkpoint=319.13 MB batch_size=16
+- Cost proxy: stronger checkpoint=1003.97 MB batch_size=8 vs tiny checkpoint=319.13 MB batch_size=16

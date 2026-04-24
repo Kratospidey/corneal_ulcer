@@ -1,3 +1,5 @@
+ARCHIVED PROMPT: historical execution instructions kept for traceability. The live repo is pattern-only; do not use this prompt to revive severity, TG, or binary continuation work.
+
 You are continuing Phase 4 of a corneal ulcer classification project.
 
 Do NOT redesign the repository.

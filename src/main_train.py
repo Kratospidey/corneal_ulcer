@@ -130,6 +130,7 @@ def main(argv: list[str] | None = None) -> int:
             "warmstart_checkpoint": warmstart_info["checkpoint_path"] if warmstart_info else None,
             "warmstart_loaded_backbone_keys": warmstart_info["loaded_backbone_keys"] if warmstart_info else 0,
             "warmstart_external_pretrain": warmstart_info["external_pretrain"] if warmstart_info else {},
+            "proxy_geometry_aux": dict(config.get("model", {}).get("proxy_geometry_aux", {})),
             **results["splits"],
         },
     )

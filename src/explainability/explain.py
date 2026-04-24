@@ -21,7 +21,7 @@ def build_parser() -> ArgumentParser:
     parser.add_argument("--train-config")
     parser.add_argument("--predictions-csv")
     parser.add_argument("--checkpoint", required=True)
-    parser.add_argument("--device", default="auto", choices=("auto", "cpu", "cuda"))
+    parser.add_argument("--device", default="auto", choices=("auto", "cpu", "cuda", "mps"))
     return parser
 
 

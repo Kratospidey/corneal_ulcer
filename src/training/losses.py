@@ -19,14 +19,14 @@ class FocalLoss:
         return ((1 - pt) ** self.gamma * ce_loss).mean()
 
 
-def build_loss(loss_name: str, class_weights=None, focal_gamma: float = 2.0):
+def build_loss(loss_name: str, class_weights=None, focal_gamma: float = 2.0, label_smoothing: float = 0.0):
     import torch  # type: ignore
 
     name = loss_name.lower()
     if name in {"ce", "cross_entropy"}:
-        return torch.nn.CrossEntropyLoss()
+        return torch.nn.CrossEntropyLoss(label_smoothing=float(label_smoothing))
     if name in {"weighted_ce", "weighted_cross_entropy"}:
-        return torch.nn.CrossEntropyLoss(weight=class_weights)
+        return torch.nn.CrossEntropyLoss(weight=class_weights, label_smoothing=float(label_smoothing))
     if name == "focal":
         return FocalLoss(weight=class_weights, gamma=focal_gamma)
     raise ValueError(f"Unsupported loss: {loss_name}")

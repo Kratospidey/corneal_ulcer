@@ -7,6 +7,73 @@ import logging
 from utils_io import safe_open_image
 
 
+def normalize_binary_mask(mask_image, invert_if_white_corners: bool = True):
+    from PIL import ImageOps  # type: ignore
+
+    mask = mask_image.convert("L")
+    if invert_if_white_corners:
+        corner_coordinates = (
+            (0, 0),
+            (max(0, mask.width - 1), 0),
+            (0, max(0, mask.height - 1)),
+            (max(0, mask.width - 1), max(0, mask.height - 1)),
+        )
+        corner_mean = sum(int(mask.getpixel(coord)) for coord in corner_coordinates) / len(corner_coordinates)
+        if corner_mean > 127:
+            mask = ImageOps.invert(mask)
+    return mask.point(lambda pixel: 255 if pixel > 127 else 0)
+
+
+def normalize_cornea_mask(mask_image):
+    return normalize_binary_mask(mask_image, invert_if_white_corners=True)
+
+
+def _extract_cornea_square_crop(
+    image,
+    cornea_mask,
+    *,
+    context_ratio: float,
+    min_side_ratio: float | None = None,
+    max_side_ratio: float | None = None,
+):
+    rgb = image.convert("RGB")
+    if cornea_mask is None:
+        return rgb
+
+    bbox = normalize_cornea_mask(cornea_mask).getbbox()
+    if bbox is None:
+        return rgb
+
+    left, top, right, bottom = bbox
+    width = max(1, right - left)
+    height = max(1, bottom - top)
+    side = float(max(width, height)) * (1.0 + float(context_ratio) * 2.0)
+    short_side = float(min(rgb.width, rgb.height))
+    if min_side_ratio is not None:
+        side = max(side, short_side * float(min_side_ratio))
+    if max_side_ratio is not None:
+        side = min(side, short_side * float(max_side_ratio))
+    side = max(1, int(round(side)))
+
+    center_x = (left + right) / 2.0
+    center_y = (top + bottom) / 2.0
+    crop_left = int(round(center_x - side / 2.0))
+    crop_top = int(round(center_y - side / 2.0))
+    crop_right = crop_left + side
+    crop_bottom = crop_top + side
+    return rgb.crop((crop_left, crop_top, crop_right, crop_bottom))
+
+
+def extract_cornea_crop_scale_v1(image, cornea_mask):
+    return _extract_cornea_square_crop(
+        image,
+        cornea_mask,
+        context_ratio=0.18,
+        min_side_ratio=0.72,
+        max_side_ratio=0.98,
+    )
+
+
 def otsu_threshold(gray_image):
     histogram = gray_image.histogram()
     total = sum(histogram)
@@ -38,6 +105,16 @@ def apply_variant(image, variant_name: str, cornea_mask=None):
     rgb = image.convert("RGB")
     if variant_name == "raw_rgb":
         return rgb
+    if variant_name == "cornea_crop_scale_v1":
+        return extract_cornea_crop_scale_v1(rgb, cornea_mask)
+    if variant_name == "crop_scale_raw_multiscale":
+        return _extract_cornea_square_crop(
+            rgb,
+            cornea_mask,
+            context_ratio=0.20,
+            min_side_ratio=0.72,
+            max_side_ratio=0.98,
+        )
     if variant_name == "blue_channel_removed":
         red, green, blue = rgb.split()
         black = blue.point(lambda _: 0)
@@ -77,6 +154,8 @@ def apply_variant(image, variant_name: str, cornea_mask=None):
 def available_variants() -> list[str]:
     return [
         "raw_rgb",
+        "cornea_crop_scale_v1",
+        "crop_scale_raw_multiscale",
         "blue_channel_removed",
         "grayscale",
         "gaussian_blur",

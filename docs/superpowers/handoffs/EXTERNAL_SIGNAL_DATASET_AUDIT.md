@@ -1,6 +1,6 @@
 # External Signal Dataset Audit
 
-Date: `2026-04-23`
+Date: `2026-04-24`
 
 ## Scope
 
@@ -42,21 +42,23 @@ Important caveat:
 
 Status:
 
-- code is publicly reachable
-- dataset is not currently verified as downloadable in practice
-- do not use for the base run
+- locally accessible from user-provided assets
+- schema is directly auditable on disk
+- usable for one narrow upstream warm-start task
 
 Why:
 
-- public GitHub repository is reachable
-- repo README points to Duke Box dataset and model download links
-- on `2026-04-23`, the advertised Box links returned HTTP `404` when probed directly
-- repo contents do not include the actual dataset; they only include code plus README stubs pointing back to Box
+- local payload is present in the workspace:
+  - `Slitnet_Datasets/Blue_Light/` (`V000.tif` to `V132.tif`)
+  - `Slitnet_Datasets/White_Light/` (`V000.tif` to `V132.tif`)
+  - `Slitnet_Datasets/annotations.mat` (MATLAB v7.3)
+  - `Slitnet_Datasets/idxs.mat` (MATLAB v7.3)
+- direct MAT inspection confirms usable labels, masks, and fold indices for local execution
 
 Consequence:
 
-- `SLIT-Net` remains conditional only
-- it should not delay or bloat the base `SLID` warm-start experiment
+- `SLIT-Net` can now be integrated as a single upstream warm-start experiment
+- integration remains scope-limited to one clean upstream task; no chained pretraining
 
 ## Dataset 1: `SLID`
 
@@ -359,7 +361,7 @@ Repo observations:
 - those README files only point to Duke Box downloads
 - no actual dataset files are present in the GitHub repo contents
 
-### Practical Download Check
+### Historical Public Download Check (Context Only)
 
 Advertised links from the public README:
 
@@ -373,10 +375,58 @@ Probe result on `2026-04-23`:
 - dataset link returned HTTP `404`
 - trained-model link returned HTTP `404`
 
-Practical access conclusion:
+Historical conclusion on `2026-04-23`:
 
-- code is accessible
-- data is not currently verified as downloadable in practice from the advertised public links
+- code was accessible
+- advertised Box-hosted payload links were not accessible in practice
+
+This section is retained as historical context only. The current audit status is based on verified local payload access.
+
+### Verified Local Accessibility (Current Source of Truth)
+
+User-provided local assets verified on disk:
+
+- `Slitnet_Datasets/Blue_Light/` with `133` TIFF images (`V000` to `V132`)
+- `Slitnet_Datasets/White_Light/` with `133` TIFF images (`V000` to `V132`)
+- `Slitnet_Datasets/annotations.mat` (MATLAB v7.3 HDF5 file)
+- `Slitnet_Datasets/idxs.mat` (MATLAB v7.3 HDF5 file)
+
+Local schema observations from direct file inspection:
+
+- `annotations.mat` root keys: `#refs#`, `data`
+- white-light keys under `data`: `IMAGE`, `PATH`, `LABEL`, `BOUNDING_BOX`, `MASK`
+- blue-light keys under `data`: `IMAGE_BLUE`, `PATH_BLUE`, `LABEL_BLUE`, `BOUNDING_BOX_BLUE`, `MASK_BLUE`
+- each modality reports `133` entries
+- `idxs.mat` contains `k1`..`k7`, each with `19` indices (`133` total)
+- index values are `0`-based and map cleanly into `V000`..`V132`
+
+### Usable Supervision And Split Semantics
+
+Usable supervision (white-light modality):
+
+- per-instance class labels in `LABEL`
+- per-instance binary masks in `MASK`
+- per-instance bounding boxes in `BOUNDING_BOX`
+
+Selected single clean upstream task for this integration:
+
+- white-light 7-class biomarker segmentation warm-start
+
+Split/indexing policy used for this first SLIT run:
+
+- fixed fold-1 protocol
+- train: `k2+k3+k4+k5+k6` (`95` images)
+- val: `k7` (`19` images)
+- test: `k1` (`19` images)
+
+Verified current-branch experiment lineage:
+
+- upstream pretrain experiment:
+  - `pretrain__slitnet__convnextv2_tiny__white7_fold1__seed42`
+- downstream fine-tune experiment:
+  - `pattern3__convnextv2_tiny__external_slitnet_white7_pretrain__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__holdout_v1__seed42`
+- warm-start checkpoint:
+  - `models/exported/pretrain__slitnet__convnextv2_tiny__white7_fold1__seed42/best.pt`
 
 ### Label Type And Domain Relevance
 
@@ -395,8 +445,8 @@ Domain relevance:
 
 Current repo role:
 
-- conditional only
-- do not block the base run on it
+- one narrow upstream warm-start source
+- downstream pattern fine-tune recipe remains unchanged
 
 ## What Is Usable Right Now
 
@@ -407,11 +457,14 @@ Usable now:
 - local `SLID` split files
 - local `SLID` manifest after raw-image path repair or extraction
 - public `SLID` annotation CSV as a verification source
+- local `SLIT-Net` white-light and blue-light image trees
+- local `SLIT-Net` `annotations.mat` and `idxs.mat`
+- one narrow `SLIT-Net` upstream warm-start task from the verified white-light fold-1 schema
 
 Not usable right now:
 
 - local `SLID` manifest without raw-image path repair
-- `SLIT-Net` dataset as a current executable base dataset
+- chained `SLID` + `SLIT-Net` pretraining in a single experiment
 
 ## Recommended Dataset Roles
 
@@ -427,16 +480,19 @@ Why:
 - strong local artifact reuse
 - single-task objective is simple and current-branch-feasible
 
-### Conditional Future Role: `SLIT-Net`
+### Current Narrow Role: `SLIT-Net`
 
 Role:
 
-- optional follow-up only if data access is restored and the integration tax stays low
+- single upstream warm-start only:
+  - white-light 7-class biomarker segmentation
+  - fixed fold `fold1_train_k2-k6_val_k7_test_k1`
 
 Why:
 
 - domain fit is good
-- current practical accessibility is not good enough for the base experiment
+- local assets are accessible and schema-clean for a deterministic fold-1 run
+- current-branch code can consume the local payload directly
 
 ## Audit Decision For Phase 2
 
@@ -446,12 +502,19 @@ Proceed with:
 
 Do not make the base run depend on:
 
-- `SLIT-Net`
+- multi-task expansion of `SLIT-Net`
+- chained `SLID` + `SLIT-Net` upstream pretraining
 - weak-label `SLID` keratitis binary pretraining
 - multi-objective lesion expansion
 
-This keeps the first executed external-signal experiment aligned with the approved spec:
+This keeps the base experiment aligned with the approved spec:
 
 - one upstream change only
 - current-branch rerun only
 - smallest honest external-signal path with the highest chance of clean execution
+
+Follow-on conclusion after the local `SLIT-Net` audit:
+
+- `SLIT-Net` is clean enough for a separate fifth-row comparison
+- it should remain isolated as its own upstream warm-start line
+- it should not be chained with `SLID` unless a later result justifies that extra complexity

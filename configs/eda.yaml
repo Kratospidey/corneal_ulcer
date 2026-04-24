@@ -8,9 +8,11 @@ montage_sample_count: 16
 extreme_sample_count: 12
 embedding_backbones:
   - convnextv2_tiny
-embedding_compare_variant: masked_highlight_proxy
+embedding_compare_variant: cornea_crop_scale_v1
 preprocessing_variants:
   - raw_rgb
+  - cornea_crop_scale_v1
+  - crop_scale_raw_multiscale
   - blue_channel_removed
   - grayscale
   - gaussian_blur

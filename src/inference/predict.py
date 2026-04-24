@@ -19,7 +19,7 @@ def build_parser() -> ArgumentParser:
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--image-path", required=True)
     parser.add_argument("--cornea-mask-path")
-    parser.add_argument("--device", default="auto", choices=("auto", "cpu", "cuda"))
+    parser.add_argument("--device", default="auto", choices=("auto", "cpu", "cuda", "mps"))
     return parser
 
 

@@ -1,3 +1,4 @@
+# Archived historical task config. Active entrypoints reject this task.
 task_name: severity_5class
 label_column: task_severity_5class
 class_names:
@@ -6,5 +7,5 @@ class_names:
   - ulcer_leq_50pct
   - ulcer_geq_75pct
   - central_ulcer
-description: Secondary confirmed Stage 3 task grounded in the dataset Type-derived severity labels.
+description: Archived historical severity task; retained only for research traceability.
 recommended_metric: balanced_accuracy

@@ -1,3 +1,5 @@
+ARCHIVED PROMPT: historical multi-task EDA instructions kept for traceability. The live repo is pattern-only; do not use this prompt to revive severity, TG, or binary continuation work.
+
 You are a senior computer-vision research engineer and medical-image EDA specialist.
 
 Your task is to perform a paper-grounded, dataset-faithful, thorough exploratory data analysis (EDA) of the SUSTech-SYSU corneal ulcer dataset using Python, while first deeply understanding the two attached main papers:

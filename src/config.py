@@ -24,10 +24,12 @@ class EDAConfig:
     montage_sample_count: int = 16
     extreme_sample_count: int = 12
     embedding_backbones: list[str] = field(default_factory=lambda: ["convnextv2_tiny"])
-    embedding_compare_variant: str = "masked_highlight_proxy"
+    embedding_compare_variant: str = "cornea_crop_scale_v1"
     preprocessing_variants: list[str] = field(
         default_factory=lambda: [
             "raw_rgb",
+            "cornea_crop_scale_v1",
+            "crop_scale_raw_multiscale",
             "blue_channel_removed",
             "grayscale",
             "gaussian_blur",
@@ -140,14 +142,19 @@ def load_yaml_overrides(config: EDAConfig, yaml_path: str | os.PathLike[str] | N
 
 
 def resolve_device(requested: str = "auto") -> str:
-    if requested in {"cpu", "cuda"}:
+    if requested in {"cpu", "cuda", "mps"}:
         return requested
     if not dependency_available("torch"):
         return "cpu"
 
     import torch  # type: ignore
 
-    return "cuda" if torch.cuda.is_available() else "cpu"
+    if torch.cuda.is_available():
+        return "cuda"
+    mps_backend = getattr(torch.backends, "mps", None)
+    if mps_backend is not None and mps_backend.is_available():
+        return "mps"
+    return "cpu"
 
 
 def runtime_summary(config: EDAConfig, requested_device: str = "auto") -> dict[str, Any]:

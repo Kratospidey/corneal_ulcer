@@ -3,9 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import torch  # type: ignore
+
+from proxy_signal.geometry import DEFAULT_TARGET_NAMES, resolve_proxy_geometry_config
+
 
 def create_model(model_config: dict[str, Any], num_classes: int):
-    import torch  # type: ignore
     from torchvision.models import AlexNet_Weights, ResNet18_Weights, VGG16_Weights, alexnet, resnet18, vgg16  # type: ignore
 
     model_name = str(model_config["name"]).lower()
@@ -13,6 +16,8 @@ def create_model(model_config: dict[str, Any], num_classes: int):
     freeze_backbone = bool(model_config.get("freeze_backbone", False))
     drop_path_rate = float(model_config.get("drop_path_rate", 0.0))
     drop_rate = float(model_config.get("drop_rate", 0.0))
+    proxy_geometry_aux_config = resolve_proxy_geometry_config(dict(model_config.get("proxy_geometry_aux", {})))
+    proxy_geometry_aux_enabled = bool(proxy_geometry_aux_config.get("enabled", False))
 
     if model_name == "resnet18":
         weights = ResNet18_Weights.DEFAULT if pretrained else None
@@ -41,12 +46,50 @@ def create_model(model_config: dict[str, Any], num_classes: int):
         if drop_rate > 0.0:
             timm_kwargs["drop_rate"] = drop_rate
         model = timm.create_model(model_name, **timm_kwargs)
+        if freeze_backbone:
+            freeze_feature_extractor(model, model_name)
+        if proxy_geometry_aux_enabled:
+            if not model_name.startswith("convnextv2"):
+                raise ValueError("proxy_geometry_aux is only supported for convnextv2 backbones.")
+            model = ConvNeXtProxyGeometryAuxModel(
+                backbone=model,
+                target_dim=len(proxy_geometry_aux_config.get("target_names") or DEFAULT_TARGET_NAMES),
+                hidden_dim=int(proxy_geometry_aux_config.get("hidden_dim", 192)),
+            )
     else:
         raise ValueError(f"Unsupported model: {model_name}")
 
-    if freeze_backbone:
+    if freeze_backbone and not model_name.startswith(("convnextv2", "swin", "maxvit")):
         freeze_feature_extractor(model, model_name)
     return model
+
+
+class ConvNeXtProxyGeometryAuxModel(torch.nn.Module):
+    def __init__(self, backbone, target_dim: int, hidden_dim: int = 192) -> None:
+        super().__init__()
+        self.backbone = backbone
+        self.target_dim = int(target_dim)
+        self.proxy_geometry_head = torch.nn.Sequential(
+            torch.nn.Linear(int(self.backbone.num_features), int(hidden_dim)),
+            torch.nn.LayerNorm(int(hidden_dim)),
+            torch.nn.GELU(),
+            torch.nn.Linear(int(hidden_dim), self.target_dim),
+        )
+
+    def _forward_logits_and_embedding(self, inputs):
+        features = self.backbone.forward_features(inputs)
+        logits = self.backbone.forward_head(features, pre_logits=False)
+        embedding = self.backbone.forward_head(features, pre_logits=True)
+        return logits, embedding
+
+    def forward(self, inputs):
+        logits, _ = self._forward_logits_and_embedding(inputs)
+        return logits
+
+    def forward_with_proxy(self, inputs):
+        logits, embedding = self._forward_logits_and_embedding(inputs)
+        proxy_geometry = torch.sigmoid(self.proxy_geometry_head(embedding))
+        return logits, proxy_geometry
 
 
 def freeze_feature_extractor(model, model_name: str) -> None:
@@ -85,7 +128,8 @@ def load_backbone_warmstart(model, checkpoint_path: str | Path) -> dict[str, Any
         raise FileNotFoundError(f"Warm-start checkpoint not found: {checkpoint_path}")
     checkpoint_payload = torch.load(checkpoint_path, map_location="cpu")
     backbone_state = _extract_backbone_state_dict(checkpoint_payload)
-    target_state = model.state_dict()
+    load_target = model.backbone if hasattr(model, "forward_with_proxy") and hasattr(model, "backbone") else model
+    target_state = load_target.state_dict()
 
     if not backbone_state:
         raise ValueError(f"No backbone weights found in warm-start checkpoint: {checkpoint_path}")
@@ -114,7 +158,7 @@ def load_backbone_warmstart(model, checkpoint_path: str | Path) -> dict[str, Any
             f"Warm-start checkpoint is missing required backbone keys: {missing_backbone[:10]}"
         )
 
-    missing_keys, unexpected_keys = model.load_state_dict(backbone_state, strict=False)
+    missing_keys, unexpected_keys = load_target.load_state_dict(backbone_state, strict=False)
     bad_missing = [key for key in missing_keys if not key.startswith("head.")]
     if bad_missing or unexpected_keys:
         raise ValueError(
@@ -132,6 +176,8 @@ def load_backbone_warmstart(model, checkpoint_path: str | Path) -> dict[str, Any
 
 def get_gradcam_target_layer(model, model_name: str):
     model_name = model_name.lower()
+    if hasattr(model, "forward_with_proxy") and hasattr(model, "backbone"):
+        model = model.backbone
     if model_name == "resnet18":
         return model.layer4[-1]
     if model_name == "vgg16":

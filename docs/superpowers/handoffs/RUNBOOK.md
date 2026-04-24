@@ -34,14 +34,21 @@ Primary output locations:
 Refresh the late-fusion deployment sweep:
 
 ```bash
-PYTHONPATH=src python src/run_ensemble_improvement_pass.py \
-  --output-root outputs \
-  --debug-root outputs/debug/2026-04-20_ensemble_improvement_pass
+PYTHONPATH=src python src/run_late_fusion.py \
+  --config configs/inference_pattern_latefusion_v1.yaml \
+  --device cuda
 ```
 
 Primary output locations:
-- `outputs/debug/2026-04-20_ensemble_improvement_pass/`
 - `outputs/metrics/pattern3__convnextv2_tiny__crop_scale_raw_multiscale__latefusion_v1__holdout_v1__seed42combo/`
+- `outputs/reports/pattern3__convnextv2_tiny__crop_scale_raw_multiscale__latefusion_v1__holdout_v1__seed42combo/`
+
+## Exploratory follow-up artifact
+
+- `pattern3__cornea_crop_scale_v1__convnextv2_tiny_plus_vit_small__stats__nearest_centroid__holdout_v1__seed42`
+- treat it as exploratory only
+- do not use it as the official image-only benchmark replacement
+- its uplift depends on mask-stat features rather than a plain fine-tuned checkpoint
 
 ## Archived lines
 

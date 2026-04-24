@@ -1,0 +1,3 @@
+base_config: train_convnextv2_tiny_cornea_crop_scale_v1_augplus_v2_weighted_sampler_tempered.yaml
+output_root: outputs
+num_workers: 0

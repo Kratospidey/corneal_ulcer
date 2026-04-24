@@ -1,3 +1,4 @@
+# Archived historical training config. Active entrypoints reject this task.
 experiment_name: severity5__resnet18__raw_rgb__holdout_v1__seed42
 task_config: configs/task_5class_severity.yaml
 split_config: configs/splits.yaml

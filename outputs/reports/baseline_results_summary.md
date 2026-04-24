@@ -9,6 +9,6 @@
 - pattern3__resnet18__masked_highlight_proxy__holdout_v1__seed42: balanced_accuracy=0.48111087948486314, macro_f1=0.45794378976968014, weighted_f1=0.5189718787796798, val_test_gap=0.0729702595019362
 - pattern3__vgg16__masked_highlight_proxy__holdout_v1__seed42: balanced_accuracy=0.4691705464063188, macro_f1=0.47082678638234193, weighted_f1=0.5342328636155796, val_test_gap=0.09216748662982749
 
-## Severity 5-Class Extension
+## Scope
 
-- severity5__alexnet__raw_rgb__holdout_v1__seed42: balanced_accuracy=0.3978827132741373, macro_f1=0.2650356867075133, weighted_f1=0.2938957158887137, val_test_gap=0.034549379940803926
+- The live project surface is pattern-only. TG, severity, and binary runs are historical only.

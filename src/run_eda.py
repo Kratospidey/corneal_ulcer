@@ -6,7 +6,6 @@ import random
 
 from config import EDAConfig, build_config, load_yaml_overrides, runtime_summary
 from dataset_manifest import (
-    add_binary_task,
     audit_rows,
     build_manifest,
     export_manifest,
@@ -30,7 +29,7 @@ def build_parser() -> ArgumentParser:
     parser.add_argument("--config", default="configs/eda.yaml")
     parser.add_argument("--batch-size", type=int)
     parser.add_argument("--num-workers", type=int)
-    parser.add_argument("--device", choices=("auto", "cpu", "cuda"))
+    parser.add_argument("--device", choices=("auto", "cpu", "cuda", "mps"))
     parser.add_argument("--skip-embeddings", action="store_true")
     parser.add_argument("--skip-duplicates", action="store_true")
     parser.add_argument("--skip-preprocessing", action="store_true")
@@ -67,7 +66,6 @@ def main(argv: list[str] | None = None) -> int:
     write_json(config.reports_dir / "runtime_summary.json", runtime)
 
     manifest = build_manifest(config.data_root, logger)
-    add_binary_task(manifest)
     export_manifest(
         manifest,
         config.manifest_dir / "manifest.csv",
@@ -87,11 +85,7 @@ def main(argv: list[str] | None = None) -> int:
     write_csv_rows(config.cleaned_metadata_dir / "label_summary.csv", label_rows)
     write_csv_rows(config.tables_dir / "label_distributions.csv", label_rows)
 
-    for task_name, title in (
-        ("task_pattern_3class", "Pattern label distribution"),
-        ("task_severity_5class", "Severity label distribution"),
-        ("task_tg_5class", "TG label distribution"),
-    ):
+    for task_name, title in (("task_pattern_3class", "Pattern label distribution"),):
         rows = [row for row in label_rows if row["task"] == task_name]
         save_bar_chart(rows, "label", "count", title, config.figures_dir / f"{task_name}_distribution.png", logger)
 
@@ -333,6 +327,8 @@ def save_mask_overlay_examples(manifest: list[dict[str, object]], config: EDACon
 def build_preprocessing_comparison_rows(sample_rows: list[dict[str, object]], logger) -> list[dict[str, object]]:
     comparison_variants = [
         "raw_rgb",
+        "cornea_crop_scale_v1",
+        "crop_scale_raw_multiscale",
         "blue_channel_removed",
         "grayscale",
         "gaussian_blur",
@@ -368,7 +364,7 @@ def save_embedding_scatter_figures(projection_rows: list[dict[str, object]], con
         grouped.setdefault((str(row["representation"]), str(row["backbone"])), []).append(row)
 
     for (representation, backbone), rows in grouped.items():
-        for color_key in ("task_pattern_3class", "task_severity_5class", "task_tg_5class"):
+        for color_key in ("task_pattern_3class",):
             save_scatter_plot(
                 rows,
                 "proj_x",
@@ -472,7 +468,6 @@ def compose_split_recommendations(manifest: list[dict[str, object]], config: EDA
             "",
             "## Higher-risk tasks",
             "",
-            "- The TG task is highly imbalanced and should use stronger imbalance-aware evaluation.",
             "- Any segmentation-assisted classification should be treated as a subset experiment because ulcer masks exist on only part of the cohort.",
         ]
     )
@@ -545,8 +540,6 @@ def compose_model_readiness_summary(
             f"- Dataset rows available for baseline classification: {len(manifest)}",
             f"- Resolved device for feature extraction/training: {runtime['resolved_device']}",
             f"- Pattern imbalance ratio: {risk_map.get('pattern_imbalance_ratio', 'n/a')}",
-            f"- Severity imbalance ratio: {risk_map.get('severity_imbalance_ratio', 'n/a')}",
-            f"- TG imbalance ratio: {risk_map.get('tg_imbalance_ratio', 'n/a')}",
             f"- Ulcer-mask subset ratio: {risk_map.get('ulcer_mask_subset_ratio', 'n/a')}",
             "",
             "## Recommendation",
@@ -637,8 +630,6 @@ def compose_embedding_analysis_summary(
             [
                 f"- {row['backbone']} / {row['representation']}: method={row['projection_method']}, "
                 f"pattern_mismatch={row['pattern_neighbor_mismatch_ratio']}, "
-                f"severity_mismatch={row['severity_neighbor_mismatch_ratio']}, "
-                f"tg_mismatch={row['tg_neighbor_mismatch_ratio']}, "
                 f"mean_neighbor_distance={row['mean_neighbor_cosine_distance']}",
             ]
         )
