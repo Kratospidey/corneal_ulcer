@@ -19,6 +19,7 @@ from data.split_utils import ensure_task_splits, load_manifest, load_split_dataf
 from data.transforms import build_transforms
 from experiment_utils import build_experiment_name, prepare_output_dirs, resolve_device, set_seed, setup_logging
 from model_factory import create_model
+from provenance_utils import build_data_provenance
 from training.losses import build_loss, compute_class_weights
 from training.optim_utils import build_optimizer, build_scheduler
 from training.samplers import build_sampler
@@ -79,6 +80,10 @@ def main(argv: list[str] | None = None) -> int:
         logger=logger,
     )
     split_path = Path(config.get("split_file", split_paths["holdout"]))
+    data_provenance = build_data_provenance(
+        manifest_path=split_config["manifest_path"],
+        split_file=split_path,
+    )
 
     manifest_df = load_manifest(split_config["manifest_path"])
     split_df = load_split_dataframe(split_path)
@@ -153,6 +158,7 @@ def main(argv: list[str] | None = None) -> int:
         {
             "config_path": args.config,
             "device": device,
+            "data_provenance": data_provenance,
             **results["splits"],
         },
     )
