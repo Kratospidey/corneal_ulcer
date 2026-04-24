@@ -433,7 +433,10 @@ def generate_paper_figure_bundle(
 ) -> dict[str, Any]:
     if logger is None:
         logger = setup_logging()
-    train_config = resolve_config(train_config)
+    if isinstance(train_config, dict):
+        train_config = dict(train_config)
+    else:
+        train_config = resolve_config(train_config)
     task_config = resolve_config(train_config["task_config"])
     task_definition = get_task_definition(str(task_config["task_name"]))
     experiment_name = build_experiment_name({**train_config, "task_name": task_definition.task_name})
@@ -480,9 +483,11 @@ def generate_paper_figure_bundle(
     )
     _plot_per_class_metrics(test_metrics["classification_report"], class_names, output_dir, palette)
     _plot_split_overview(history_rows, test_metrics, output_dir, palette)
-    xai_rows = select_xai_rows(prediction_rows, class_names, max(1, int(xai_count)))
     resolved_device = resolve_device(device)
-    xai_summary_lines = _generate_xai_gallery(train_config, Path(checkpoint_path), xai_rows, class_names, output_dir, resolved_device)
+    xai_summary_lines: list[str] = []
+    if int(xai_count) > 0:
+        xai_rows = select_xai_rows(prediction_rows, class_names, int(xai_count))
+        xai_summary_lines = _generate_xai_gallery(train_config, Path(checkpoint_path), xai_rows, class_names, output_dir, resolved_device)
 
     summary_lines = [
         f"# Paper Figure Bundle: {experiment_name}",
@@ -500,16 +505,17 @@ def generate_paper_figure_bundle(
         "## Generated Figures",
         "",
     ]
-    for key in ("confusion", "roc", "pr", "reliability", "confidence", "per_class", "split_overview", "xai"):
+    figure_keys = ["confusion", "roc", "pr", "reliability", "confidence", "per_class", "split_overview"]
+    if int(xai_count) > 0:
+        figure_keys.append("xai")
+    for key in figure_keys:
         stem = FIGURE_FILENAMES[key]
         summary_lines.append(f"- `{stem}.png`")
         summary_lines.append(f"- `{stem}.pdf`")
+    if int(xai_count) > 0:
+        summary_lines.extend(["", "## Grad-CAM Examples", "", *xai_summary_lines])
     summary_lines.extend(
         [
-            "",
-            "## Grad-CAM Examples",
-            "",
-            *xai_summary_lines,
             "",
             "## Recomputed Metric Cross-Check",
             "",
