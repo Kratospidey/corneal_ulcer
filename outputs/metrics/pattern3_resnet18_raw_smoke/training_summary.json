@@ -1,5 +1,0 @@
-{
-  "best_epoch": 1,
-  "best_metric": 0.5273227820397631,
-  "checkpoint_path": "models/checkpoints/pattern3_resnet18_raw_smoke/best.pt"
-}

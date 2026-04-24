@@ -29,9 +29,17 @@ conda-meta/
 Thumbs.db
 .vscode/
 .idea/
+.codex/
+Y/
+__pycache__/
 
 # Logs
 *.log
+*.aux
+*.fdb_latexmk
+*.fls
+*.xdv
+*.pdf
 
 # ----------------------------
 # Project data - DO NOT COMMIT
@@ -45,6 +53,21 @@ experiments/
 archive/
 outputs/debug/severity_posthoc/
 outputs/debug/tg_punctate_audit/
+outputs/cache/
+outputs/confusion_matrices/
+outputs/debug/
+outputs/embeddings/
+outputs/experiments/
+outputs/explainability/
+outputs/figures/
+outputs/logs/
+outputs/pr_curves/
+outputs/predictions/
+outputs/roc_curves/
+outputs/reruns_*/
+outputs/retrain_lineage_*/
+outputs/segmentation_predictions/
+outputs/tables/
 outputs/metrics/severity5__posthoc__*/
 outputs/metrics/tg5__*/
 outputs/predictions/severity5__posthoc__*/
@@ -54,6 +77,9 @@ outputs/reports/tg5__*/
 outputs/confusion_matrices/tg5__*/
 outputs/pr_curves/tg5__*/
 outputs/roc_curves/tg5__*/
+Slitnet_Datasets/
+lit_papers/
+docs/paper_assets/
 
 # Large local zips / datasets
 *.zip

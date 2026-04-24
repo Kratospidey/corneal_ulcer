@@ -52,7 +52,7 @@ class PredictionContractTests(unittest.TestCase):
             task_name="pattern_3class",
             class_names=CLASS_NAMES,
             split_name="val",
-            source_config_path="configs/train_maxvit_tiny_cornea_crop_scale_v1_augplus_v2_weighted_sampler_tempered.yaml",
+            source_config_path="configs/train_convnextv2_tiny_cornea_crop_scale_v1_augplus_v2_weighted_sampler_tempered.yaml",
         )
         validate_prediction_provenance(provenance, task_name="pattern_3class", class_names=CLASS_NAMES, split_name="val")
 

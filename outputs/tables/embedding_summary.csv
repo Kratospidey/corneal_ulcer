@@ -1,3 +1,0 @@
-representation,backbone,embedding_rows,embedding_dim,device,artifact_path,projection_method,rows,mean_neighbor_cosine_distance,mean_outlier_zscore,pattern_neighbor_mismatch_ratio,severity_neighbor_mismatch_ratio,tg_neighbor_mismatch_ratio
-raw_rgb,convnextv2_tiny,712,768,cuda,outputs/embeddings/raw_rgb__convnextv2_tiny_embeddings.npz,umap,712,0.169312,0.808376,0.393258,0.682584,0.328652
-masked_highlight_proxy,convnextv2_tiny,712,768,cuda,outputs/embeddings/masked_highlight_proxy__convnextv2_tiny_embeddings.npz,umap,712,0.099705,0.812532,0.462079,0.675562,0.36236

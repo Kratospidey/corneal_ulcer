@@ -43,13 +43,6 @@ Primary output locations:
 - `outputs/metrics/pattern3__convnextv2_tiny__crop_scale_raw_multiscale__latefusion_v1__holdout_v1__seed42combo/`
 - `outputs/reports/pattern3__convnextv2_tiny__crop_scale_raw_multiscale__latefusion_v1__holdout_v1__seed42combo/`
 
-## Exploratory follow-up artifact
-
-- `pattern3__cornea_crop_scale_v1__convnextv2_tiny_plus_vit_small__stats__nearest_centroid__holdout_v1__seed42`
-- treat it as exploratory only
-- do not use it as the official image-only benchmark replacement
-- its uplift depends on mask-stat features rather than a plain fine-tuned checkpoint
-
 ## Archived lines
 
 - TG / type is archived on this foundation.
@@ -58,8 +51,7 @@ Primary output locations:
 
 ## Where outputs land
 
-- Official evals: `outputs/metrics/`, `outputs/reports/`, `outputs/predictions/`
-- Debug / pass-level summaries: `outputs/debug/<date>_<pass_name>/`
+- Official evals: `outputs/metrics/`, `outputs/reports/`
 - Exported checkpoints: `models/exported/<experiment_name>/`
 
 ## Things to be careful about
@@ -67,5 +59,4 @@ Primary output locations:
 - Do not blur the official pattern checkpoint with the late-fusion deployed rule.
 - Do not reopen TG here.
 - Do not reopen severity here.
-- Do not use shadow benchmark results as if they were on the official leaderboard.
 - Do not destabilize the official pattern line.

@@ -1,5 +1,0 @@
-{
-  "best_epoch": 6,
-  "best_metric": 0.532034003732117,
-  "checkpoint_path": "models/checkpoints/pattern3__alexnet__masked_highlight_proxy__holdout_v1__seed42/best.pt"
-}

@@ -1,8 +1,0 @@
-base_config: train_convnextv2_raw.yaml
-experiment_name: pattern3__convnextv2_base__raw_rgb__holdout_v1__seed42
-batch_size: 8
-model:
-  name: convnextv2_base.fcmae_ft_in1k
-  pretrained: true
-  freeze_backbone: false
-  drop_path_rate: 0.1

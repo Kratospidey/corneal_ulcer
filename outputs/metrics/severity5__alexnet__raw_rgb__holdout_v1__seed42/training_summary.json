@@ -1,5 +1,0 @@
-{
-  "best_epoch": 10,
-  "best_metric": 0.3633333333333334,
-  "checkpoint_path": "models/checkpoints/severity5__alexnet__raw_rgb__holdout_v1__seed42/best.pt"
-}

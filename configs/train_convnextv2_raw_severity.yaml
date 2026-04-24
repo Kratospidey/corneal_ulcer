@@ -1,5 +1,0 @@
-# Archived historical training config. Active entrypoints reject this task.
-base_config: train_convnextv2_raw.yaml
-experiment_name: severity5__convnextv2_tiny__raw_rgb__holdout_v1__seed42
-task_config: configs/task_5class_severity.yaml
-split_file: data/interim/split_files/severity_5class_holdout.csv

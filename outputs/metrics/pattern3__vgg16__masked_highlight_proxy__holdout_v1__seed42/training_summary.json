@@ -1,5 +1,0 @@
-{
-  "best_epoch": 8,
-  "best_metric": 0.5613380330361463,
-  "checkpoint_path": "models/checkpoints/pattern3__vgg16__masked_highlight_proxy__holdout_v1__seed42/best.pt"
-}

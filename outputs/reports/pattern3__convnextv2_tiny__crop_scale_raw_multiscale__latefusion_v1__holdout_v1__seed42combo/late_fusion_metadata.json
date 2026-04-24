@@ -1,0 +1,25 @@
+{
+  "config_path": "configs/inference_pattern_latefusion_v1.yaml",
+  "device": "cuda",
+  "split_file": "data/interim/split_files/pattern_3class_holdout.csv",
+  "summary": [
+    {
+      "balanced_accuracy": 0.712753703319741,
+      "delta_vs_deployed_rule_ba": -0.1435685351163185,
+      "delta_vs_official_single_ba": -0.13543845381550557,
+      "macro_f1": 0.6867177788013411,
+      "split": "val"
+    },
+    {
+      "balanced_accuracy": 0.7764343455400367,
+      "delta_vs_deployed_rule_ba": -0.07988789289602283,
+      "delta_vs_official_single_ba": -0.07175781159520989,
+      "macro_f1": 0.7437707050383108,
+      "split": "test"
+    }
+  ],
+  "weights": {
+    "cornea_crop_scale_v1": 0.65,
+    "raw_rgb": 0.35
+  }
+}

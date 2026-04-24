@@ -9,10 +9,7 @@ This repository is frozen around a single active benchmark family: `pattern_3cla
 | Official single checkpoint | `pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__holdout_v1__seed42` | `0.8482` | `0.7990` | Official image-only benchmark, ranked by balanced accuracy first and macro F1 second |
 | Best deployed inference rule | `pattern3__convnextv2_tiny__crop_scale_raw_multiscale__latefusion_v1__holdout_v1__seed42combo` | `0.8563` | `0.8115` | Deployment-time ensemble rule, not the canonical single-model benchmark |
 
-Archived families remain in the repo only as historical artifacts:
-
-- `task_tg_5class`
-- `severity_5class`
+Archived TG, severity, segmentation-assisted, external-warmstart, Swin, MaxViT, and proxy-geometry branches have been removed from the active repo surface. This tree is now maintained as a pattern-only codebase.
 
 Start here if you need the frozen project state:
 

@@ -5,7 +5,6 @@ from typing import Any
 
 from evaluation.evaluate import run_inference
 from evaluation.metrics import compute_classification_metrics
-from proxy_signal.geometry import build_proxy_geometry_targets, resolve_proxy_geometry_config
 from training.optim_utils import step_scheduler
 
 
@@ -36,10 +35,6 @@ def fit_model(
     use_amp = bool(training_config.get("amp", True) and device == "cuda")
     best_metric_name = str(training_config.get("best_metric", "balanced_accuracy"))
     scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
-    proxy_geometry_aux_config = resolve_proxy_geometry_config(dict(training_config.get("model", {}).get("proxy_geometry_aux", {})))
-    proxy_geometry_aux_enabled = bool(proxy_geometry_aux_config.get("enabled", False))
-    if proxy_geometry_aux_enabled and not hasattr(model, "forward_with_proxy"):
-        raise ValueError("proxy_geometry_aux is enabled, but the model does not expose forward_with_proxy().")
 
     result = TrainingResult(checkpoint_path=str(checkpoint_path))
     stale_epochs = 0
@@ -54,7 +49,6 @@ def fit_model(
             use_amp=use_amp,
             scaler=scaler,
             grad_clip_norm=grad_clip_norm,
-            proxy_geometry_aux_config=proxy_geometry_aux_config if proxy_geometry_aux_enabled else None,
         )
         val_payload = run_inference(model, loaders["val"], device=device, criterion=criterion)
         val_metrics_payload = compute_classification_metrics(
@@ -68,8 +62,6 @@ def fit_model(
             {
                 "epoch": epoch,
                 "train_loss": train_metrics["loss"],
-                "train_classification_loss": train_metrics["classification_loss"],
-                "train_proxy_geometry_loss": train_metrics["proxy_geometry_loss"],
                 "val_loss": val_payload["loss"],
                 "val_balanced_accuracy": val_metrics_payload["metrics"]["balanced_accuracy"],
                 "val_macro_f1": val_metrics_payload["metrics"]["macro_f1"],
@@ -99,45 +91,18 @@ def train_one_epoch(
     use_amp: bool,
     scaler,
     grad_clip_norm: float,
-    proxy_geometry_aux_config: dict[str, Any] | None = None,
 ):
     import torch  # type: ignore
-    import torch.nn.functional as F  # type: ignore
 
     model.train()
     losses: list[float] = []
-    classification_losses: list[float] = []
-    proxy_geometry_losses: list[float] = []
-    proxy_geometry_enabled = bool(proxy_geometry_aux_config and proxy_geometry_aux_config.get("enabled", False))
-    proxy_geometry_loss_weight = float((proxy_geometry_aux_config or {}).get("loss_weight", 0.15))
-    target_weights = None
-    if proxy_geometry_enabled:
-        target_weights = torch.tensor(
-            proxy_geometry_aux_config["target_weights"],
-            dtype=torch.float32,
-            device=device,
-        ).view(1, -1)
     for batch in dataloader:
         images = batch["image"].to(device, non_blocking=True)
         targets = batch["target"].to(device, non_blocking=True)
         optimizer.zero_grad(set_to_none=True)
         with torch.cuda.amp.autocast(enabled=use_amp):
-            if proxy_geometry_enabled:
-                logits, proxy_geometry_pred = model.forward_with_proxy(images)
-                classification_loss = criterion(logits, targets)
-                proxy_geometry_target = build_proxy_geometry_targets(images.detach(), config=proxy_geometry_aux_config)
-                proxy_geometry_loss = F.smooth_l1_loss(
-                    proxy_geometry_pred,
-                    proxy_geometry_target,
-                    reduction="none",
-                )
-                proxy_geometry_loss = (proxy_geometry_loss * target_weights).mean()
-                loss = classification_loss + (proxy_geometry_loss_weight * proxy_geometry_loss)
-            else:
-                logits = model(images)
-                classification_loss = criterion(logits, targets)
-                proxy_geometry_loss = images.new_tensor(0.0)
-                loss = classification_loss
+            logits = model(images)
+            loss = criterion(logits, targets)
         if use_amp:
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
@@ -149,12 +114,8 @@ def train_one_epoch(
             torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip_norm)
             optimizer.step()
         losses.append(float(loss.item()))
-        classification_losses.append(float(classification_loss.item()))
-        proxy_geometry_losses.append(float(proxy_geometry_loss.item()))
     return {
         "loss": float(sum(losses) / max(1, len(losses))),
-        "classification_loss": float(sum(classification_losses) / max(1, len(classification_losses))),
-        "proxy_geometry_loss": float(sum(proxy_geometry_losses) / max(1, len(proxy_geometry_losses))),
     }
 
 

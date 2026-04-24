@@ -9,7 +9,7 @@ from data.label_utils import get_task_definition
 from data.split_utils import ensure_task_splits, load_manifest, load_split_dataframe
 from data.transforms import build_transforms
 from experiment_utils import build_experiment_name, prepare_output_dirs, resolve_device, set_seed, setup_logging
-from model_factory import create_model, load_backbone_warmstart
+from model_factory import create_model
 from training.losses import build_loss, compute_class_weights
 from training.optim_utils import build_optimizer, build_scheduler
 from training.samplers import build_sampler
@@ -89,15 +89,6 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     model = create_model(config["model"], num_classes=len(task_definition.class_names)).to(device)
-    warmstart_info = None
-    warmstart_checkpoint = str(config.get("warmstart_checkpoint", "")).strip()
-    if warmstart_checkpoint:
-        warmstart_info = load_backbone_warmstart(model, warmstart_checkpoint)
-        logger.info(
-            "Loaded warm-start backbone from %s with %s keys",
-            warmstart_info["checkpoint_path"],
-            warmstart_info["loaded_backbone_keys"],
-        )
     class_weights = None
     if bool(config.get("use_class_weights", True)):
         class_weights = compute_class_weights(task_definition.class_names, datasets["train"].class_counts()).to(device)
@@ -127,10 +118,6 @@ def main(argv: list[str] | None = None) -> int:
         {
             "config_path": args.config,
             "device": device,
-            "warmstart_checkpoint": warmstart_info["checkpoint_path"] if warmstart_info else None,
-            "warmstart_loaded_backbone_keys": warmstart_info["loaded_backbone_keys"] if warmstart_info else 0,
-            "warmstart_external_pretrain": warmstart_info["external_pretrain"] if warmstart_info else {},
-            "proxy_geometry_aux": dict(config.get("model", {}).get("proxy_geometry_aux", {})),
             **results["splits"],
         },
     )

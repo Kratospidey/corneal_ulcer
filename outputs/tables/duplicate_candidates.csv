@@ -1,9 +1,0 @@
-group_type,group_id,group_size,image_id,task_pattern_3class,task_severity_5class,task_tg_5class,cross_label_suspicion
-perceptual,003c7cfcfcfc3c00,2,43,point_like,ulcer_geq_75pct,patch_gt_1mm,False
-perceptual,003c7cfcfcfc3c00,2,121,point_like,ulcer_geq_75pct,patch_gt_1mm,False
-perceptual,107c7c3c7c7c3c00,2,49,point_like,ulcer_geq_75pct,patch_gt_1mm,False
-perceptual,107c7c3c7c7c3c00,2,118,point_like,ulcer_geq_75pct,patch_gt_1mm,False
-perceptual,1c343c1c5c5c2030,2,366,point_flaky_mixed,central_ulcer,patch_gt_1mm,True
-perceptual,1c343c1c5c5c2030,2,426,point_flaky_mixed,ulcer_leq_25pct,patch_gt_1mm,True
-perceptual,003c6c7cfcec7c10,2,494,point_flaky_mixed,ulcer_geq_75pct,patch_gt_1mm,True
-perceptual,003c6c7cfcec7c10,2,552,point_flaky_mixed,ulcer_leq_25pct,patch_gt_1mm,True

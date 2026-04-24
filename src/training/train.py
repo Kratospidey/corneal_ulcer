@@ -11,8 +11,6 @@ from evaluation.evaluate import run_inference
 from evaluation.metrics import compute_classification_metrics
 from evaluation.reports import (
     save_metric_artifacts,
-    write_baseline_rollup_summaries,
-    write_convnextv2_rollup_summaries,
     write_experiment_report,
 )
 from experiment_utils import write_csv_rows
@@ -99,8 +97,6 @@ def run_training_pipeline(
         )
         split_metrics[split_name] = {**metrics_payload["metrics"], **calibration_payload}
 
-    write_baseline_rollup_summaries(output_dirs["metrics"].parents[1])
-    write_convnextv2_rollup_summaries(output_dirs["metrics"].parents[1])
     return {
         "training": training_result,
         "splits": split_metrics,

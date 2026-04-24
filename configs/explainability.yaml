@@ -1,3 +1,0 @@
-train_config: configs/train_convnextv2_raw.yaml
-predictions_csv: outputs/predictions/pattern3__convnextv2_tiny__raw_rgb__holdout_v1__seed42/test_predictions.csv
-examples_per_bucket: 6

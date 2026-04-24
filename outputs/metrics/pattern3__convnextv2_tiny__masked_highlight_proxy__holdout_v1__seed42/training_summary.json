@@ -1,5 +1,0 @@
-{
-  "best_epoch": 5,
-  "best_metric": 0.5405234178819085,
-  "checkpoint_path": "models/checkpoints/pattern3__convnextv2_tiny__masked_highlight_proxy__holdout_v1__seed42/best.pt"
-}

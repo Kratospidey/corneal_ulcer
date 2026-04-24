@@ -1,8 +1,0 @@
-# Archived historical task config. Active entrypoints reject this task.
-task_name: binary
-label_column: task_binary
-class_names:
-  - no_ulcer
-  - ulcer_present
-description: Archived historical binary task; retained only for research traceability.
-recommended_metric: balanced_accuracy

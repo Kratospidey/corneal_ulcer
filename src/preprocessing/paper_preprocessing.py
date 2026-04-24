@@ -6,7 +6,7 @@ from utils_io import safe_open_image
 from utils_preprocessing import apply_variant
 
 
-def prepare_paper_image(image, preprocessing_mode: str = "masked_highlight_proxy", cornea_mask=None):
+def prepare_paper_image(image, preprocessing_mode: str = "raw_rgb", cornea_mask=None):
     return apply_variant(image, preprocessing_mode, cornea_mask)
 
 
