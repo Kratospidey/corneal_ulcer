@@ -29,6 +29,7 @@ conda-meta/
 Thumbs.db
 .vscode/
 .idea/
+.codex
 .codex/
 Y/
 __pycache__/
