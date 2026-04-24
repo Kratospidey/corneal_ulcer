@@ -1,15 +1,32 @@
 from __future__ import annotations
 
 from pathlib import Path
+import tempfile
 import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from evaluation.paper_figures import build_reliability_bins, select_xai_rows
+from evaluation.paper_figures import _load_history_rows, build_reliability_bins, select_xai_rows
 
 
 class PaperFigureTests(unittest.TestCase):
+    def test_load_history_rows_parses_training_history_csv(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            history_path = Path(tmpdir) / "history.csv"
+            history_path.write_text(
+                "epoch,train_loss,val_loss,val_balanced_accuracy,val_macro_f1,lr\n"
+                "1,0.9,0.8,0.70,0.68,0.0001\n"
+                "2,0.7,0.6,0.75,0.73,0.00009\n",
+                encoding="utf-8",
+            )
+
+            rows = _load_history_rows(history_path)
+
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]["epoch"], 1.0)
+        self.assertAlmostEqual(rows[1]["val_balanced_accuracy"], 0.75)
+
     def test_build_reliability_bins_preserves_sample_count(self) -> None:
         probabilities = [
             [0.9, 0.1, 0.0],

@@ -3,6 +3,15 @@ from __future__ import annotations
 from argparse import ArgumentParser
 from pathlib import Path
 
+from console_utils import (
+    emit_artifact_summary,
+    emit_dataset_summary,
+    emit_figure_summary,
+    emit_model_summary,
+    emit_run_header,
+    emit_split_metrics,
+    get_console,
+)
 from config_utils import resolve_config
 from data.dataset import build_dataloaders, build_datasets
 from data.label_utils import get_task_definition
@@ -12,6 +21,7 @@ from evaluation.calibration import compute_calibration
 from evaluation.confusion import save_confusion_matrix
 from evaluation.evaluate import run_inference
 from evaluation.metrics import compute_classification_metrics
+from evaluation.paper_figures import generate_paper_figure_bundle
 from evaluation.reports import save_metric_artifacts, write_experiment_report
 from experiment_utils import build_experiment_name, prepare_output_dirs, resolve_device, setup_logging
 from model_factory import create_model
@@ -30,6 +40,7 @@ def build_parser() -> ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     logger = setup_logging()
+    console = get_console()
     config = resolve_config(args.config)
     task_config = resolve_config(config["task_config"])
     split_config = resolve_config(config["split_config"])
@@ -37,6 +48,15 @@ def main(argv: list[str] | None = None) -> int:
     experiment_name = build_experiment_name({**config, "task_name": task_definition.task_name})
     output_dirs = prepare_output_dirs(experiment_name, output_root=config.get("output_root", "outputs"))
     device = resolve_device(args.device)
+    emit_run_header(
+        console,
+        title="Pattern Evaluation Run",
+        experiment_name=experiment_name,
+        task_name=task_definition.task_name,
+        device=device,
+        config_path=args.config,
+        output_root=config.get("output_root", "outputs"),
+    )
     torch_num_threads = int(config.get("torch_num_threads", 0) or 0)
     if torch_num_threads > 0:
         import torch  # type: ignore
@@ -80,6 +100,16 @@ def main(argv: list[str] | None = None) -> int:
         sampler=None,
         shuffle_train=False,
     )
+    emit_dataset_summary(
+        console,
+        datasets=datasets,
+        class_names=task_definition.class_names,
+        batch_size=int(config.get("batch_size", 16)),
+        epochs=int(config.get("epochs", 10)),
+        preprocessing_mode=str(config.get("preprocessing_mode", "raw_rgb")),
+        train_transform_profile=str(config.get("train_transform_profile", "default")),
+        sampler_name="none",
+    )
     model = create_model(config["model"], num_classes=len(task_definition.class_names)).to(device)
 
     import torch  # type: ignore
@@ -95,8 +125,16 @@ def main(argv: list[str] | None = None) -> int:
         focal_gamma=float(config.get("focal_gamma", 2.0)),
         label_smoothing=float(config.get("label_smoothing", 0.0)),
     )
+    emit_model_summary(console, model=model, training_config=config, class_weights=class_weights)
 
-    evaluation_payload = run_inference(model, loaders[args.split], device=device, criterion=criterion)
+    evaluation_payload = run_inference(
+        model,
+        loaders[args.split],
+        device=device,
+        criterion=criterion,
+        progress_desc=f"Evaluating {args.split}",
+        show_progress=bool(config.get("show_progress", True)),
+    )
     metrics_payload = compute_classification_metrics(
         evaluation_payload["y_true"],
         evaluation_payload["y_pred"],
@@ -128,6 +166,38 @@ def main(argv: list[str] | None = None) -> int:
         metrics={**metrics_payload["metrics"], **calibration_payload},
         output_path=output_dirs["reports"] / f"{args.split}_summary.md",
     )
+    merged_metrics = {**metrics_payload["metrics"], **calibration_payload}
+    emit_split_metrics(
+        console,
+        split_name=args.split,
+        metrics=merged_metrics,
+        class_names=task_definition.class_names,
+        report_path=output_dirs["reports"] / f"{args.split}_summary.md",
+    )
+    emit_artifact_summary(
+        console,
+        checkpoint_path=args.checkpoint,
+        exported_checkpoint_path=None,
+        metrics_dir=output_dirs["metrics"],
+        reports_dir=output_dirs["reports"],
+    )
+    if args.split == "test" and bool(config.get("auto_generate_paper_figures", True)):
+        try:
+            figure_bundle = generate_paper_figure_bundle(
+                train_config=config,
+                checkpoint_path=args.checkpoint,
+                output_root=Path(config.get("output_root", "outputs")) / "paper_figures",
+                device=str(config.get("paper_figures_device", device)),
+                xai_count=int(config.get("paper_figures_xai_count", 6)),
+                logger=logger,
+            )
+            emit_figure_summary(
+                console,
+                figure_output_dir=figure_bundle["output_dir"],
+                figure_manifest_path=figure_bundle["manifest_path"],
+            )
+        except Exception as exc:
+            logger.warning("Automatic paper figure generation failed: %s", exc)
     logger.info("Saved evaluation artifacts for %s split=%s", experiment_name, args.split)
     return 0
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any
+import csv
 import json
 
 from config_utils import resolve_config, write_text
@@ -40,10 +41,27 @@ def build_parser() -> ArgumentParser:
 
 
 def _load_predictions(predictions_csv: Path) -> list[dict[str, Any]]:
-    import csv
-
     with predictions_csv.open(newline="", encoding="utf-8") as handle:
         return list(csv.DictReader(handle))
+
+
+def _load_history_rows(history_csv: Path | None) -> list[dict[str, float]]:
+    if history_csv is None or not history_csv.exists():
+        return []
+    rows: list[dict[str, float]] = []
+    with history_csv.open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            rows.append(
+                {
+                    "epoch": float(row.get("epoch", 0.0) or 0.0),
+                    "train_loss": float(row.get("train_loss", 0.0) or 0.0),
+                    "val_loss": float(row.get("val_loss", 0.0) or 0.0),
+                    "val_balanced_accuracy": float(row.get("val_balanced_accuracy", 0.0) or 0.0),
+                    "val_macro_f1": float(row.get("val_macro_f1", 0.0) or 0.0),
+                    "lr": float(row.get("lr", 0.0) or 0.0),
+                }
+            )
+    return rows
 
 
 def _to_bool(value: Any) -> bool:
@@ -284,34 +302,62 @@ def _plot_per_class_metrics(classification_report: dict[str, Any], class_names: 
     plt.close(fig)
 
 
-def _plot_split_overview(split_metrics: dict[str, dict[str, Any]], output_dir: Path, palette: list[str]) -> None:
+def _plot_split_overview(history_rows: list[dict[str, float]], test_metrics: dict[str, Any], output_dir: Path, palette: list[str]) -> None:
     import matplotlib.pyplot as plt  # type: ignore
     import numpy as np  # type: ignore
 
-    splits = ["train", "val", "test"]
-    bal_acc = [float(split_metrics[split_name]["balanced_accuracy"]) for split_name in splits]
-    macro_f1 = [float(split_metrics[split_name]["macro_f1"]) for split_name in splits]
-    losses = [float(split_metrics[split_name]["loss"]) for split_name in splits]
-    ece = [float(split_metrics[split_name]["ece"]) for split_name in splits]
-
     fig, axes = plt.subplots(1, 2, figsize=(8.8, 4.2))
-    x = np.arange(len(splits))
-    width = 0.34
+    if history_rows:
+        epochs = np.asarray([row["epoch"] for row in history_rows], dtype=float)
+        train_loss = np.asarray([row["train_loss"] for row in history_rows], dtype=float)
+        val_loss = np.asarray([row["val_loss"] for row in history_rows], dtype=float)
+        val_bal_acc = np.asarray([row["val_balanced_accuracy"] for row in history_rows], dtype=float)
+        val_macro_f1 = np.asarray([row["val_macro_f1"] for row in history_rows], dtype=float)
 
-    axes[0].bar(x - (width / 2), bal_acc, width=width, color=palette[0], label="Balanced accuracy")
-    axes[0].bar(x + (width / 2), macro_f1, width=width, color=palette[1], label="Macro F1")
-    axes[0].set_xticks(x)
-    axes[0].set_xticklabels(splits)
-    axes[0].set_ylim(0, 1.0)
-    axes[0].set_title("Split Classification Metrics")
-    axes[0].legend(frameon=False)
+        axes[0].plot(epochs, train_loss, color=palette[0], linewidth=2, marker="o", label="Train loss")
+        axes[0].plot(epochs, val_loss, color=palette[1], linewidth=2, marker="o", label="Val loss")
+        axes[0].set_xlabel("Epoch")
+        axes[0].set_ylabel("Loss")
+        axes[0].set_title("Training Loss History")
+        axes[0].legend(frameon=False)
 
-    axes[1].bar(x - (width / 2), losses, width=width, color=palette[2], label="Loss")
-    axes[1].bar(x + (width / 2), ece, width=width, color=palette[3], label="ECE")
-    axes[1].set_xticks(x)
-    axes[1].set_xticklabels(splits)
-    axes[1].set_title("Split Loss and Calibration")
-    axes[1].legend(frameon=False)
+        axes[1].plot(epochs, val_bal_acc, color=palette[2], linewidth=2, marker="o", label="Val balanced acc")
+        axes[1].plot(epochs, val_macro_f1, color=palette[3], linewidth=2, marker="o", label="Val macro F1")
+        axes[1].set_xlabel("Epoch")
+        axes[1].set_ylabel("Score")
+        axes[1].set_ylim(0, 1.0)
+        axes[1].set_title("Validation Selection Metrics")
+        axes[1].legend(frameon=False)
+        best_epoch = int(history_rows[max(range(len(history_rows)), key=lambda idx: history_rows[idx]["val_balanced_accuracy"])]["epoch"])
+        fig.suptitle("Training History and Validation Selection", fontsize=11)
+        fig.text(
+            0.5,
+            0.01,
+            (
+                f"Best val balanced accuracy epoch: {best_epoch} | "
+                f"Test balanced accuracy={float(test_metrics['balanced_accuracy']):.4f} | "
+                f"Test macro F1={float(test_metrics['macro_f1']):.4f} | "
+                f"ECE={float(test_metrics['ece']):.4f}"
+            ),
+            ha="center",
+            fontsize=8,
+        )
+    else:
+        metric_names = ["accuracy", "balanced_accuracy", "macro_f1", "weighted_f1"]
+        metric_values = [float(test_metrics[name]) for name in metric_names]
+        axes[0].bar(metric_names, metric_values, color=palette[: len(metric_names)])
+        axes[0].set_ylim(0, 1.0)
+        axes[0].set_title("Test Metrics Snapshot")
+        axes[0].tick_params(axis="x", rotation=20)
+
+        secondary_names = ["roc_auc_macro_ovr", "pr_auc_macro_ovr", "ece"]
+        secondary_values = [
+            float(test_metrics[name]) if test_metrics.get(name) is not None else 0.0 for name in secondary_names
+        ]
+        axes[1].bar(secondary_names, secondary_values, color=[palette[4], palette[5], palette[1]])
+        axes[1].set_ylim(0, 1.0)
+        axes[1].set_title("Calibration and Ranking Support")
+        axes[1].tick_params(axis="x", rotation=20)
 
     _save_figure(fig, output_dir, FIGURE_FILENAMES["split_overview"])
     plt.close(fig)
@@ -373,35 +419,43 @@ def _generate_xai_gallery(
     return summary_lines
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
-    logger = setup_logging()
-    train_config = resolve_config(args.train_config)
+def generate_paper_figure_bundle(
+    *,
+    train_config: dict[str, Any] | str | Path,
+    checkpoint_path: str | Path,
+    predictions_csv: str | Path | None = None,
+    metrics_json: str | Path | None = None,
+    output_root: str | Path = "outputs/paper_figures",
+    device: str = "cpu",
+    xai_count: int = 6,
+    history_csv: str | Path | None = None,
+    logger=None,
+) -> dict[str, Any]:
+    if logger is None:
+        logger = setup_logging()
+    train_config = resolve_config(train_config)
     task_config = resolve_config(train_config["task_config"])
     task_definition = get_task_definition(str(task_config["task_name"]))
     experiment_name = build_experiment_name({**train_config, "task_name": task_definition.task_name})
-    output_dir = Path(args.output_root) / experiment_name
+    output_dir = Path(output_root) / experiment_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
     predictions_csv = Path(
-        args.predictions_csv
+        predictions_csv
         or Path(train_config.get("output_root", "outputs")) / "predictions" / experiment_name / "test_predictions.csv"
     )
     metrics_json = Path(
-        args.metrics_json
+        metrics_json
         or Path(train_config.get("output_root", "outputs")) / "metrics" / experiment_name / "test_metrics.json"
     )
-    split_metrics = {
-        split_name: json.loads(
-            (
-                Path(train_config.get("output_root", "outputs")) / "metrics" / experiment_name / f"{split_name}_metrics.json"
-            ).read_text(encoding="utf-8")
-        )
-        for split_name in ("train", "val", "test")
-    }
+    history_csv = Path(
+        history_csv
+        or Path(train_config.get("output_root", "outputs")) / "metrics" / experiment_name / "history.csv"
+    )
 
     prediction_rows = _load_predictions(predictions_csv)
     test_metrics = json.loads(metrics_json.read_text(encoding="utf-8"))
+    history_rows = _load_history_rows(history_csv)
     class_names = list(task_definition.class_names)
     probability_columns = [f"prob_{class_name}" for class_name in class_names]
     y_true = [class_names.index(str(row["true_label"])) for row in prediction_rows]
@@ -425,13 +479,10 @@ def main(argv: list[str] | None = None) -> int:
         palette,
     )
     _plot_per_class_metrics(test_metrics["classification_report"], class_names, output_dir, palette)
-    _plot_split_overview(split_metrics, output_dir, palette)
-    xai_rows = select_xai_rows(prediction_rows, class_names, max(1, int(args.xai_count)))
-    device = resolve_device(args.device)
-    if device == "cuda":
-        logger.warning("CUDA requested for paper figures, but this environment is currently unstable; using CPU instead.")
-        device = "cpu"
-    xai_summary_lines = _generate_xai_gallery(train_config, Path(args.checkpoint), xai_rows, class_names, output_dir, device)
+    _plot_split_overview(history_rows, test_metrics, output_dir, palette)
+    xai_rows = select_xai_rows(prediction_rows, class_names, max(1, int(xai_count)))
+    resolved_device = resolve_device(device)
+    xai_summary_lines = _generate_xai_gallery(train_config, Path(checkpoint_path), xai_rows, class_names, output_dir, resolved_device)
 
     summary_lines = [
         f"# Paper Figure Bundle: {experiment_name}",
@@ -466,8 +517,29 @@ def main(argv: list[str] | None = None) -> int:
             f"- Macro F1: {float(recomputed['metrics']['macro_f1']):.4f}",
         ]
     )
-    write_text(output_dir / "figure_manifest.md", "\n".join(summary_lines))
+    manifest_path = output_dir / "figure_manifest.md"
+    write_text(manifest_path, "\n".join(summary_lines))
     logger.info("Saved paper figure bundle for %s to %s", experiment_name, output_dir)
+    return {
+        "experiment_name": experiment_name,
+        "output_dir": str(output_dir),
+        "manifest_path": str(manifest_path),
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    logger = setup_logging()
+    generate_paper_figure_bundle(
+        train_config=args.train_config,
+        checkpoint_path=args.checkpoint,
+        predictions_csv=args.predictions_csv,
+        metrics_json=args.metrics_json,
+        output_root=args.output_root,
+        device=args.device,
+        xai_count=args.xai_count,
+        logger=logger,
+    )
     return 0
 
 

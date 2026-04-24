@@ -3,6 +3,15 @@ from __future__ import annotations
 from argparse import ArgumentParser
 from pathlib import Path
 
+from console_utils import (
+    emit_artifact_summary,
+    emit_dataset_summary,
+    emit_figure_summary,
+    emit_model_summary,
+    emit_run_header,
+    emit_split_metrics,
+    get_console,
+)
 from config_utils import resolve_config, write_json
 from data.dataset import build_dataloaders, build_datasets
 from data.label_utils import get_task_definition
@@ -26,6 +35,7 @@ def build_parser() -> ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     logger = setup_logging()
+    console = get_console()
     config = resolve_config(args.config)
     config["_config_path"] = args.config
     task_config = resolve_config(config["task_config"])
@@ -48,6 +58,15 @@ def main(argv: list[str] | None = None) -> int:
     output_dirs = prepare_output_dirs(experiment_name, output_root=config.get("output_root", "outputs"))
     device = resolve_device(args.device)
     logger.info("Training %s on %s using device=%s", experiment_name, task_name, device)
+    emit_run_header(
+        console,
+        title="Pattern Training Run",
+        experiment_name=experiment_name,
+        task_name=task_name,
+        device=device,
+        config_path=args.config,
+        output_root=config.get("output_root", "outputs"),
+    )
 
     split_paths = ensure_task_splits(
         manifest_path=split_config["manifest_path"],
@@ -87,6 +106,16 @@ def main(argv: list[str] | None = None) -> int:
         num_workers=int(config.get("num_workers", 4)),
         sampler=sampler,
     )
+    emit_dataset_summary(
+        console,
+        datasets=datasets,
+        class_names=task_definition.class_names,
+        batch_size=int(config.get("batch_size", 16)),
+        epochs=int(config.get("epochs", 10)),
+        preprocessing_mode=str(config.get("preprocessing_mode", "raw_rgb")),
+        train_transform_profile=str(config.get("train_transform_profile", "default")),
+        sampler_name=str(config.get("sampler", "none")),
+    )
 
     model = create_model(config["model"], num_classes=len(task_definition.class_names)).to(device)
     class_weights = None
@@ -98,6 +127,7 @@ def main(argv: list[str] | None = None) -> int:
         focal_gamma=float(config.get("focal_gamma", 2.0)),
         label_smoothing=float(config.get("label_smoothing", 0.0)),
     )
+    emit_model_summary(console, model=model, training_config=config, class_weights=class_weights)
     optimizer = build_optimizer(model, config)
     scheduler = build_scheduler(optimizer, config)
 
@@ -112,6 +142,7 @@ def main(argv: list[str] | None = None) -> int:
         training_config=config,
         output_dirs=output_dirs,
         experiment_name=experiment_name,
+        console=console,
     )
     write_json(
         output_dirs["reports"] / "run_metadata.json",
@@ -121,6 +152,30 @@ def main(argv: list[str] | None = None) -> int:
             **results["splits"],
         },
     )
+    for split_name, metrics in results["splits"].items():
+        emit_split_metrics(
+            console,
+            split_name=split_name,
+            metrics=metrics,
+            class_names=task_definition.class_names,
+            report_path=output_dirs["reports"] / f"{split_name}_summary.md",
+        )
+    emit_artifact_summary(
+        console,
+        checkpoint_path=results["checkpoint_path"],
+        exported_checkpoint_path=results.get("exported_checkpoint_path"),
+        metrics_dir=output_dirs["metrics"],
+        reports_dir=output_dirs["reports"],
+    )
+    figure_bundle = results.get("figure_bundle")
+    if isinstance(figure_bundle, dict) and figure_bundle.get("output_dir"):
+        emit_figure_summary(
+            console,
+            figure_output_dir=figure_bundle["output_dir"],
+            figure_manifest_path=figure_bundle.get("manifest_path"),
+        )
+    elif isinstance(figure_bundle, dict) and figure_bundle.get("error"):
+        logger.warning("Automatic paper figure generation failed: %s", figure_bundle["error"])
     return 0
 
 
