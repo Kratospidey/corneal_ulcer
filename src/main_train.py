@@ -12,6 +12,7 @@ from console_utils import (
     emit_split_metrics,
     get_console,
 )
+from checkpoint_utils import load_model_init_checkpoint
 from config_utils import resolve_config, write_json
 from data.dataset import build_dataloaders, build_datasets
 from data.label_utils import get_task_definition
@@ -123,6 +124,18 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     model = create_model(config["model"], num_classes=len(task_definition.class_names)).to(device)
+    init_checkpoint_summary = None
+    init_checkpoint_path = config.get("init_checkpoint_path")
+    if init_checkpoint_path:
+        init_checkpoint_summary = load_model_init_checkpoint(model, init_checkpoint_path, map_location=device)
+        logger.info(
+            "Initialized %s from %s with %d loaded keys (%d missing, %d mismatched).",
+            experiment_name,
+            init_checkpoint_summary["checkpoint_path"],
+            init_checkpoint_summary["loaded_keys"],
+            len(init_checkpoint_summary["missing_keys"]),
+            len(init_checkpoint_summary["skipped_shape_mismatch_keys"]),
+        )
     class_weights = None
     if bool(config.get("use_class_weights", True)):
         class_weights = compute_class_weights(task_definition.class_names, datasets["train"].class_counts()).to(device)
@@ -159,6 +172,7 @@ def main(argv: list[str] | None = None) -> int:
             "config_path": args.config,
             "device": device,
             "data_provenance": data_provenance,
+            "init_checkpoint": init_checkpoint_summary,
             **results["splits"],
         },
     )
