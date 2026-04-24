@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from model_factory import model_outputs_to_dict, primary_logits
+
 
 def _build_progress(iterable, *, desc: str | None, enabled: bool, leave: bool):
     if not enabled or not desc:
@@ -23,6 +25,7 @@ def run_inference(model, dataloader, device: str, criterion=None, progress_desc:
     all_targets: list[int] = []
     all_preds: list[int] = []
     all_probabilities: list[np.ndarray] = []
+    all_logits: list[np.ndarray] = []
     prediction_rows: list[dict[str, Any]] = []
 
     iterator = _build_progress(dataloader, desc=progress_desc, enabled=show_progress, leave=False)
@@ -31,7 +34,8 @@ def run_inference(model, dataloader, device: str, criterion=None, progress_desc:
             for batch in iterator:
                 images = batch["image"].to(device, non_blocking=True)
                 targets = batch["target"].to(device, non_blocking=True)
-                logits = model(images)
+                model_outputs = model_outputs_to_dict(model(images))
+                logits = primary_logits(model_outputs)
                 if criterion is not None:
                     losses.append(float(criterion(logits, targets).item()))
                 probabilities = torch.softmax(logits, dim=1)
@@ -40,9 +44,11 @@ def run_inference(model, dataloader, device: str, criterion=None, progress_desc:
                 all_targets.extend(targets.cpu().tolist())
                 all_preds.extend(preds.cpu().tolist())
                 all_probabilities.extend(probabilities.cpu().numpy())
+                all_logits.extend(logits.detach().cpu().numpy())
 
                 target_list = targets.cpu().tolist()
                 pred_list = preds.cpu().tolist()
+                logits_array = logits.detach().cpu().numpy()
                 for row_index, image_id in enumerate(batch["image_id"]):
                     row = {
                         "image_id": str(image_id),
@@ -50,6 +56,7 @@ def run_inference(model, dataloader, device: str, criterion=None, progress_desc:
                         "target_index": int(target_list[row_index]),
                         "predicted_index": int(pred_list[row_index]),
                         "confidence": float(probabilities[row_index].max().item()),
+                        "logits": [float(value) for value in logits_array[row_index].tolist()],
                         "raw_image_path": str(batch["raw_image_path"][row_index]),
                         "cornea_mask_path": str(batch["cornea_mask_path"][row_index]) if "cornea_mask_path" in batch else "",
                         "ulcer_mask_path": str(batch["ulcer_mask_path"][row_index]) if "ulcer_mask_path" in batch else "",
@@ -62,10 +69,12 @@ def run_inference(model, dataloader, device: str, criterion=None, progress_desc:
 
     mean_loss = float(sum(losses) / max(1, len(losses))) if losses else None
     probabilities_array = np.asarray(all_probabilities) if all_probabilities else None
+    logits_array = np.asarray(all_logits) if all_logits else None
     return {
         "loss": mean_loss,
         "y_true": all_targets,
         "y_pred": all_preds,
         "probabilities": probabilities_array,
+        "logits": logits_array,
         "prediction_rows": prediction_rows,
     }

@@ -124,6 +124,10 @@ def main(argv: list[str] | None = None) -> int:
         class_weights=class_weights,
         focal_gamma=float(config.get("focal_gamma", 2.0)),
         label_smoothing=float(config.get("label_smoothing", 0.0)),
+        class_names=task_definition.class_names,
+        label_counts=datasets["train"].class_counts(),
+        logit_adjustment_tau=float(config.get("logit_adjustment_tau", 1.0)),
+        class_balanced_beta=float(config.get("class_balanced_beta", 0.999)),
     )
     emit_model_summary(console, model=model, training_config=config, class_weights=class_weights)
 

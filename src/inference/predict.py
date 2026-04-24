@@ -10,7 +10,7 @@ from config_utils import resolve_config
 from data.label_utils import get_task_definition, index_to_class
 from experiment_utils import resolve_device, setup_logging
 from inference.inference_utils import load_image_for_inference
-from model_factory import create_model
+from model_factory import create_model, primary_logits
 
 
 def build_parser() -> ArgumentParser:
@@ -46,7 +46,7 @@ def main(argv: list[str] | None = None) -> int:
         image_size=int(config.get("image_size", 224)),
     ).to(device)
     with torch.inference_mode():
-        probs = torch.softmax(model(image_tensor), dim=1)[0].cpu().tolist()
+        probs = torch.softmax(primary_logits(model(image_tensor)), dim=1)[0].cpu().tolist()
     pred_index = max(range(len(probs)), key=lambda index: probs[index])
     logger.info("Prediction: %s (confidence=%.4f)", label_map[pred_index], probs[pred_index])
     for index, prob in enumerate(probs):

@@ -11,14 +11,19 @@ def probability_column_names(class_names: list[str] | tuple[str, ...]) -> list[s
     return [f"prob_{class_name}" for class_name in class_names]
 
 
+def logit_column_names(class_names: list[str] | tuple[str, ...]) -> list[str]:
+    return [f"logit_{class_name}" for class_name in class_names]
+
+
 def build_prediction_provenance(
     task_name: str,
     class_names: list[str] | tuple[str, ...],
     split_name: str,
     source_config_path: str | Path | None,
     checkpoint_path: str | Path | None = None,
+    include_logits: bool = False,
 ) -> dict[str, Any]:
-    return {
+    payload = {
         "task_name": str(task_name),
         "split": str(split_name),
         "class_names": [str(class_name) for class_name in class_names],
@@ -26,12 +31,16 @@ def build_prediction_provenance(
         "source_config_path": str(source_config_path) if source_config_path else None,
         "checkpoint_path": str(checkpoint_path) if checkpoint_path else None,
     }
+    if include_logits:
+        payload["logit_columns"] = logit_column_names(class_names)
+    return payload
 
 
 def build_prediction_row(
     base_row: dict[str, Any],
     class_names: list[str] | tuple[str, ...],
     probabilities: list[float] | tuple[float, ...],
+    logits: list[float] | tuple[float, ...] | None = None,
     extras: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     row = {
@@ -42,6 +51,9 @@ def build_prediction_row(
     }
     for class_name, probability in zip(class_names, probabilities, strict=True):
         row[f"prob_{class_name}"] = float(probability)
+    if logits is not None:
+        for class_name, logit in zip(class_names, logits, strict=True):
+            row[f"logit_{class_name}"] = float(logit)
     if extras:
         for key, value in extras.items():
             if key in row:
@@ -60,6 +72,7 @@ def validate_prediction_rows(
 
     expected_probability_columns = probability_column_names(class_names)
     required_columns = set(REQUIRED_BASE_COLUMNS).union(expected_probability_columns)
+    expected_logit_columns = logit_column_names(class_names)
     seen_image_ids: set[str] = set()
 
     for row in rows:
@@ -72,6 +85,12 @@ def validate_prediction_rows(
             raise ValueError(
                 "Prediction export probability columns do not match the fixed class order: "
                 f"expected {expected_probability_columns}, got {actual_probability_columns}"
+            )
+        actual_logit_columns = [key for key in row.keys() if key.startswith("logit_")]
+        if actual_logit_columns and actual_logit_columns != expected_logit_columns:
+            raise ValueError(
+                "Prediction export logit columns do not match the fixed class order: "
+                f"expected {expected_logit_columns}, got {actual_logit_columns}"
             )
 
         image_id = str(row["image_id"])
@@ -96,6 +115,7 @@ def validate_prediction_provenance(
     expected_probability_columns = probability_column_names(class_names)
     actual_class_names = [str(class_name) for class_name in provenance.get("class_names", [])]
     actual_probability_columns = [str(column) for column in provenance.get("probability_columns", [])]
+    actual_logit_columns = [str(column) for column in provenance.get("logit_columns", [])]
 
     if str(provenance.get("task_name")) != str(task_name):
         raise ValueError(
@@ -114,4 +134,9 @@ def validate_prediction_provenance(
         raise ValueError(
             "Prediction provenance probability columns mismatch: "
             f"expected {expected_probability_columns}, got {actual_probability_columns}"
+        )
+    if actual_logit_columns and actual_logit_columns != logit_column_names(class_names):
+        raise ValueError(
+            "Prediction provenance logit columns mismatch: "
+            f"expected {logit_column_names(class_names)}, got {actual_logit_columns}"
         )

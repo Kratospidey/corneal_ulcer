@@ -1,0 +1,30 @@
+{
+  "A0_correct_official_wrong": 5,
+  "num_samples": 108,
+  "official_correct_A0_wrong": 9,
+  "per_class_recall": {
+    "A0": {
+      "flaky": 0.6923076923076923,
+      "point_flaky_mixed": 0.7317073170731707,
+      "point_like": 0.8888888888888888
+    },
+    "official": {
+      "flaky": 0.9230769230769231,
+      "point_flaky_mixed": 0.6585365853658537,
+      "point_like": 0.9629629629629629
+    }
+  },
+  "point_flaky_mixed_confusion": {
+    "A0": {
+      "flaky": 6,
+      "point_flaky_mixed": 30,
+      "point_like": 5
+    },
+    "official": {
+      "flaky": 8,
+      "point_flaky_mixed": 27,
+      "point_like": 6
+    }
+  },
+  "prediction_changed_count": 14
+}

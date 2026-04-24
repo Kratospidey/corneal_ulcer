@@ -1,0 +1,47 @@
+{
+  "config_path": "configs/phase1/train_pattern3_phase1_A5_class_balanced_focal.yaml",
+  "device": "cuda",
+  "val": {
+    "accuracy": 0.8207547169811321,
+    "balanced_accuracy": 0.707017301356924,
+    "classification_report": {
+      "accuracy": 0.8207547169811321,
+      "flaky": {
+        "f1-score": 0.38461538461538464,
+        "precision": 0.4166666666666667,
+        "recall": 0.35714285714285715,
+        "support": 14.0
+      },
+      "macro avg": {
+        "f1-score": 0.7090399312621535,
+        "precision": 0.7133699633699634,
+        "recall": 0.707017301356924,
+        "support": 106.0
+      },
+      "point_flaky_mixed": {
+        "f1-score": 0.7901234567901234,
+        "precision": 0.7619047619047619,
+        "recall": 0.8205128205128205,
+        "support": 39.0
+      },
+      "point_like": {
+        "f1-score": 0.9523809523809523,
+        "precision": 0.9615384615384616,
+        "recall": 0.9433962264150944,
+        "support": 53.0
+      },
+      "weighted avg": {
+        "f1-score": 0.8176945346756668,
+        "precision": 0.8161241274448822,
+        "recall": 0.8207547169811321,
+        "support": 106.0
+      }
+    },
+    "ece": 0.11231289719635587,
+    "macro_f1": 0.7090399312621535,
+    "mean_brier_like": 0.17520935833454132,
+    "pr_auc_macro_ovr": 0.7161271320475501,
+    "roc_auc_macro_ovr": 0.868423253414402,
+    "weighted_f1": 0.8176945346756668
+  }
+}
