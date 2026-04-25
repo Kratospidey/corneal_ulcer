@@ -17,6 +17,23 @@
   - balanced accuracy `0.8563`
   - macro F1 `0.8115`
 
+## Best Generated Challenger
+
+- `pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_v2w005__holdout_v1__seed42`
+- balanced accuracy `0.8509`
+- macro F1 `0.8330`
+- accuracy `0.8611`
+- weighted F1 `0.8614`
+- ECE `0.0732`
+
+This is the best generated/reproducible challenger so far, produced by warm-starting from the official checkpoint and training with a small ordinal auxiliary loss (`ordinal_aux_weight=0.05`).
+
+It does **not** replace the official checkpoint yet because validation BA did not clearly exceed the official checkpoint and the result still needs seed confirmation.
+
+Exported challenger path:
+
+- `models/exported/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_v2w005__holdout_v1__seed42/best.pt`
+
 ## Entry Points
 
 - Train:
@@ -25,6 +42,8 @@
   - `PYTHONPATH=src /home/kratospidey/.local/share/mamba/envs/corneal-train/bin/python src/main_eval.py --config configs/train_convnextv2_tiny_cornea_crop_scale_v1_augplus_v2_weighted_sampler_tempered.yaml --checkpoint models/exported/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__holdout_v1__seed42/best.pt --split test --device cuda`
 - Late-fusion inference:
   - `PYTHONPATH=src /home/kratospidey/.local/share/mamba/envs/corneal-train/bin/python src/run_late_fusion.py --config configs/inference_pattern_latefusion_v1.yaml --device cuda`
+- Evaluate frozen challenger:
+  - `PYTHONPATH=src /home/kratospidey/.local/share/mamba/envs/corneal-train/bin/python src/main_eval.py --config configs/model_improve/train_pattern3_officialinit_ordinalaux_v2_w005.yaml --checkpoint models/exported/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_v2w005__holdout_v1__seed42/best.pt --split test --device cuda`
 
 ## Kept Surface
 
