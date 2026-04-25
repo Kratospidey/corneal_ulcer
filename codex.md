@@ -19,6 +19,11 @@
 
 ## Best Generated Challenger
 
+- Status framing:
+  - official = historical anchor
+  - `v2w005` = superseded generated challenger
+  - `w0035` = current best generated challenger
+
 - `pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_w0035__holdout_v1__seed42`
 - balanced accuracy `0.8671`
 - macro F1 `0.8546`
@@ -39,6 +44,7 @@ Previous frozen challenger:
 - `pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_v2w005__holdout_v1__seed42`
 - balanced accuracy `0.8509`
 - macro F1 `0.8330`
+- superseded by `w0035`
 
 Best no-retrain checkpoint interpolation candidate:
 
