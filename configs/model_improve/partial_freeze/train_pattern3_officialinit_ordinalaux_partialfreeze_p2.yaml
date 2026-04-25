@@ -1,0 +1,17 @@
+base_config: ../train_pattern3_officialinit_ordinalaux_v1.yaml
+experiment_name: pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_partialfreeze_p2__holdout_v1__seed42
+output_root: outputs/model_improve_2026-04-25/partial_freeze
+epochs: 5
+early_stopping_patience: 2
+ordinal_aux_weight: 0.035
+lr: 0.00003
+freeze_prefixes:
+  - backbone.stem
+  - backbone.stages.0
+  - backbone.stages.1
+  - backbone.stages.2
+optimizer_param_groups:
+  - prefixes: [classifier, feature_norm, ordinal_head]
+    lr: 0.00003
+  - prefixes: [backbone.]
+    lr: 0.00001

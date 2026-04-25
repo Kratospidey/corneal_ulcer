@@ -30,6 +30,8 @@ def run_training_pipeline(
     output_dirs: dict[str, Path],
     experiment_name: str,
     console=None,
+    teacher_model=None,
+    distillation_config: dict[str, Any] | None = None,
 ):
     checkpoint_path = output_dirs["models"] / "best.pt"
     show_progress = bool(training_config.get("show_progress", True))
@@ -44,6 +46,8 @@ def run_training_pipeline(
         training_config=training_config,
         checkpoint_path=checkpoint_path,
         console=console,
+        teacher_model=teacher_model,
+        distillation_config=distillation_config,
     )
     write_csv_rows(output_dirs["metrics"] / "history.csv", training_result.history)
     write_json(

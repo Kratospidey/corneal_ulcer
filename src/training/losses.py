@@ -101,6 +101,15 @@ def compute_ordinal_aux_loss(ordinal_logits, targets, num_classes: int):
     return loss_fn(ordinal_logits, ordinal_targets(targets, num_classes=num_classes))
 
 
+def compute_distillation_kl(student_logits, teacher_logits, temperature: float = 2.0):
+    import torch.nn.functional as F  # type: ignore
+
+    temperature = float(temperature)
+    student_log_probs = F.log_softmax(student_logits / temperature, dim=1)
+    teacher_probs = F.softmax(teacher_logits / temperature, dim=1)
+    return F.kl_div(student_log_probs, teacher_probs, reduction="batchmean") * (temperature ** 2)
+
+
 def build_loss(
     loss_name: str,
     class_weights=None,

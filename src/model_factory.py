@@ -114,6 +114,16 @@ def primary_logits(outputs):
     return payload["logits"]
 
 
+def freeze_parameter_prefixes(model, prefixes: list[str] | tuple[str, ...]) -> list[str]:
+    normalized = [str(prefix) for prefix in prefixes if str(prefix).strip()]
+    frozen: list[str] = []
+    for name, parameter in model.named_parameters():
+        if any(name.startswith(prefix) for prefix in normalized):
+            parameter.requires_grad = False
+            frozen.append(name)
+    return frozen
+
+
 def create_model(model_config: dict[str, Any], num_classes: int):
     import timm  # type: ignore
 

@@ -19,20 +19,33 @@
 
 ## Best Generated Challenger
 
-- `pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_v2w005__holdout_v1__seed42`
-- balanced accuracy `0.8509`
-- macro F1 `0.8330`
-- accuracy `0.8611`
-- weighted F1 `0.8614`
-- ECE `0.0732`
+- `pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_w0035__holdout_v1__seed42`
+- balanced accuracy `0.8671`
+- macro F1 `0.8546`
+- accuracy `0.8796`
+- weighted F1 `0.8801`
+- ECE `0.0728`
 
-This is the best generated/reproducible challenger so far, produced by warm-starting from the official checkpoint and training with a small ordinal auxiliary loss (`ordinal_aux_weight=0.05`).
+This is the best generated/reproducible challenger so far, produced by warm-starting from the official checkpoint and training with a smaller ordinal auxiliary loss (`ordinal_aux_weight=0.035`).
 
-It does **not** replace the official checkpoint yet because validation BA did not clearly exceed the official checkpoint and the result still needs seed confirmation.
+It does **not** replace the official checkpoint yet because the result still needs seed confirmation.
 
 Exported challenger path:
 
-- `models/exported/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_v2w005__holdout_v1__seed42/best.pt`
+- `models/exported/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_w0035__holdout_v1__seed42/best.pt`
+
+Previous frozen challenger:
+
+- `pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_v2w005__holdout_v1__seed42`
+- balanced accuracy `0.8509`
+- macro F1 `0.8330`
+
+Best no-retrain checkpoint interpolation candidate:
+
+- official/challenger weight interpolation `alpha=0.20`
+- balanced accuracy `0.8563`
+- macro F1 `0.8115`
+- preserves official `point_like` and `flaky` recall
 
 ## Entry Points
 
@@ -43,7 +56,7 @@ Exported challenger path:
 - Late-fusion inference:
   - `PYTHONPATH=src /home/kratospidey/.local/share/mamba/envs/corneal-train/bin/python src/run_late_fusion.py --config configs/inference_pattern_latefusion_v1.yaml --device cuda`
 - Evaluate frozen challenger:
-  - `PYTHONPATH=src /home/kratospidey/.local/share/mamba/envs/corneal-train/bin/python src/main_eval.py --config configs/model_improve/train_pattern3_officialinit_ordinalaux_v2_w005.yaml --checkpoint models/exported/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_v2w005__holdout_v1__seed42/best.pt --split test --device cuda`
+  - `PYTHONPATH=src /home/kratospidey/.local/share/mamba/envs/corneal-train/bin/python src/main_eval.py --config configs/model_improve/ordinal_weight_grid/train_pattern3_officialinit_ordinalaux_w0035.yaml --checkpoint models/exported/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_w0035__holdout_v1__seed42/best.pt --split test --device cuda`
 
 ## Kept Surface
 

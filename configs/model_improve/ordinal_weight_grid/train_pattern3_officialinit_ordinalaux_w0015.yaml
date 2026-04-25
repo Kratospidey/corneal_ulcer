@@ -1,0 +1,4 @@
+base_config: ../train_pattern3_officialinit_ordinalaux_v1.yaml
+experiment_name: pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_w0015__holdout_v1__seed42
+output_root: outputs/model_improve_2026-04-25/ordinal_weight_grid
+ordinal_aux_weight: 0.015

@@ -1,0 +1,10 @@
+base_config: ../train_pattern3_officialinit_ordinalaux_v1.yaml
+experiment_name: pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_w0025_distill_w025__holdout_v1__seed42
+output_root: outputs/model_improve_2026-04-25/official_teacher_distill
+ordinal_aux_weight: 0.025
+distillation:
+  enabled: true
+  teacher_config_path: configs/train_convnextv2_tiny_cornea_crop_scale_v1_augplus_v2_weighted_sampler_tempered.yaml
+  teacher_checkpoint_path: models/exported/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__holdout_v1__seed42/best.pt
+  weight: 0.25
+  temperature: 2.0
