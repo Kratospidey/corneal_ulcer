@@ -29,6 +29,14 @@ def build_parser() -> ArgumentParser:
     parser.add_argument("--config", required=True)
     parser.add_argument("--official-checkpoint", required=True)
     parser.add_argument("--challenger-checkpoint", required=True)
+    parser.add_argument("--official-label", default="official")
+    parser.add_argument("--challenger-label", default="challenger")
+    parser.add_argument("--experiment-tag", default="ckptinterp")
+    parser.add_argument("--report-title", default="Checkpoint Interpolation")
+    parser.add_argument(
+        "--report-path",
+        default="outputs/reports/model_improve/checkpoint_interpolation.md",
+    )
     parser.add_argument("--device", choices=("auto", "cpu", "cuda", "mps"), default="auto")
     parser.add_argument(
         "--alphas",
@@ -38,7 +46,7 @@ def build_parser() -> ArgumentParser:
     )
     parser.add_argument(
         "--output-root",
-        default="outputs/model_improve_2026-04-25/checkpoint_interpolation_official_vs_v2w005",
+        default="outputs/model_improve_2026-04-25/checkpoint_interpolation",
     )
     return parser
 
@@ -174,10 +182,10 @@ def _alpha_tag(alpha: float) -> str:
     return f"alpha{int(round(alpha * 100)):03d}"
 
 
-def _write_summary(rows: list[dict[str, Any]], output_path: Path) -> None:
+def _write_summary(rows: list[dict[str, Any]], output_path: Path, title: str) -> None:
     sorted_rows = sorted(rows, key=lambda row: (-row["val_balanced_accuracy"], -row["test_balanced_accuracy"], -row["test_macro_f1"]))
     lines = [
-        "# Checkpoint Interpolation: Official vs v2w005",
+        f"# {title}",
         "",
         "| Alpha | Val BA | Test BA | Test Macro F1 | PL Recall | PFM Recall | Flaky Recall |",
         "| ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
@@ -208,7 +216,7 @@ def main(argv: list[str] | None = None) -> int:
     for alpha in [float(value) for value in args.alphas]:
         experiment_name = (
             "pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__"
-            f"ckptinterp_v2w005_{_alpha_tag(alpha)}__holdout_v1__seed42"
+            f"{args.experiment_tag}_{_alpha_tag(alpha)}__holdout_v1__seed42"
         )
         output_dirs = prepare_output_dirs(experiment_name, output_root=output_root)
         model = create_model(config["model"], num_classes=len(task_definition.class_names)).to(device)
@@ -285,7 +293,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     write_json(output_root / "interpolation_results.json", results)
-    _write_summary(results, Path("outputs/reports/model_improve/checkpoint_interpolation_official_vs_v2w005.md"))
+    _write_summary(results, Path(args.report_path), args.report_title)
     return 0
 
 

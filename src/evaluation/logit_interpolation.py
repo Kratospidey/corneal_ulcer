@@ -25,6 +25,14 @@ def build_parser() -> ArgumentParser:
     parser.add_argument("--official-checkpoint", required=True)
     parser.add_argument("--challenger-config", required=True)
     parser.add_argument("--challenger-checkpoint", required=True)
+    parser.add_argument("--official-label", default="official")
+    parser.add_argument("--challenger-label", default="challenger")
+    parser.add_argument("--experiment-tag", default="logitinterp")
+    parser.add_argument("--report-title", default="Logit Interpolation")
+    parser.add_argument(
+        "--report-path",
+        default="outputs/reports/model_improve/logit_interpolation.md",
+    )
     parser.add_argument("--device", choices=("auto", "cpu", "cuda", "mps"), default="auto")
     parser.add_argument(
         "--alphas",
@@ -34,7 +42,7 @@ def build_parser() -> ArgumentParser:
     )
     parser.add_argument(
         "--output-root",
-        default="outputs/model_improve_2026-04-25/logit_interpolation_official_vs_v2w005",
+        default="outputs/model_improve_2026-04-25/logit_interpolation",
     )
     return parser
 
@@ -171,10 +179,10 @@ def _evaluate_payload(payload: dict[str, Any], class_names):
     }
 
 
-def _write_summary(rows: list[dict[str, Any]], output_path: Path) -> None:
+def _write_summary(rows: list[dict[str, Any]], output_path: Path, title: str) -> None:
     sorted_rows = sorted(rows, key=lambda row: (-row["val_balanced_accuracy"], -row["test_balanced_accuracy"], -row["test_macro_f1"]))
     lines = [
-        "# Logit Interpolation: Official vs v2w005",
+        f"# {title}",
         "",
         "Deployment-only results.",
         "",
@@ -200,8 +208,8 @@ def main(argv: list[str] | None = None) -> int:
 
     source_payloads: dict[str, dict[str, dict[str, Any]]] = {}
     for source_name, config_path, checkpoint_path in (
-        ("official", args.official_config, args.official_checkpoint),
-        ("challenger", args.challenger_config, args.challenger_checkpoint),
+        (args.official_label, args.official_config, args.official_checkpoint),
+        (args.challenger_label, args.challenger_config, args.challenger_checkpoint),
     ):
         source_payloads[source_name] = {}
         for split_name in ("val", "test"):
@@ -211,14 +219,14 @@ def main(argv: list[str] | None = None) -> int:
     for alpha in [float(value) for value in args.alphas]:
         experiment_name = (
             "pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__"
-            f"logitinterp_v2w005_alpha{int(round(alpha * 100)):03d}__holdout_v1__seed42"
+            f"{args.experiment_tag}_alpha{int(round(alpha * 100)):03d}__holdout_v1__seed42"
         )
         output_dirs = prepare_output_dirs(experiment_name, output_root=output_root)
         split_summaries: dict[str, dict[str, float]] = {}
         for split_name in ("val", "test"):
             blended_payload = _blend_payloads(
-                source_payloads["official"][split_name],
-                source_payloads["challenger"][split_name],
+                source_payloads[args.official_label][split_name],
+                source_payloads[args.challenger_label][split_name],
                 alpha=alpha,
             )
             evaluated = _evaluate_payload(blended_payload, class_names=class_names)
@@ -231,7 +239,7 @@ def main(argv: list[str] | None = None) -> int:
                 split_name=split_name,
                 task_name=task_name,
                 source_config_path=args.official_config,
-                checkpoint_path=f"logit_interpolation:official={args.official_checkpoint};challenger={args.challenger_checkpoint};alpha={alpha:.2f}",
+                checkpoint_path=f"logit_interpolation:{args.official_label}={args.official_checkpoint};{args.challenger_label}={args.challenger_checkpoint};alpha={alpha:.2f}",
             )
             save_confusion_matrix(
                 blended_payload["y_true"],
@@ -267,7 +275,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     write_json(output_root / "logit_interpolation_results.json", results)
-    _write_summary(results, Path("outputs/reports/model_improve/logit_interpolation_official_vs_v2w005.md"))
+    _write_summary(results, Path(args.report_path), args.report_title)
     return 0
 
 
