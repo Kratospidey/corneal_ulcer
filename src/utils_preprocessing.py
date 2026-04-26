@@ -73,6 +73,16 @@ def extract_cornea_crop_scale_v1(image, cornea_mask):
     )
 
 
+def extract_cornea_crop_wide_context_v1(image, cornea_mask):
+    return _extract_cornea_square_crop(
+        image,
+        cornea_mask,
+        context_ratio=0.45,
+        min_side_ratio=0.88,
+        max_side_ratio=1.00,
+    )
+
+
 def apply_variant(image, variant_name: str, cornea_mask=None):
     from PIL import Image  # type: ignore
 
@@ -81,6 +91,8 @@ def apply_variant(image, variant_name: str, cornea_mask=None):
         return rgb
     if variant_name == "cornea_crop_scale_v1":
         return extract_cornea_crop_scale_v1(rgb, cornea_mask)
+    if variant_name == "cornea_crop_wide_context_v1":
+        return extract_cornea_crop_wide_context_v1(rgb, cornea_mask)
     if variant_name == "crop_scale_raw_multiscale":
         return _extract_cornea_square_crop(
             rgb,
@@ -96,6 +108,7 @@ def available_variants() -> list[str]:
     return [
         "raw_rgb",
         "cornea_crop_scale_v1",
+        "cornea_crop_wide_context_v1",
         "crop_scale_raw_multiscale",
     ]
 

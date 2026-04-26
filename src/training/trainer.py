@@ -162,7 +162,10 @@ def train_one_epoch(
             iterator = dataloader
     try:
         for batch in iterator:
-            images = batch["image"].to(device, non_blocking=True)
+            if "image_tight" in batch and "image_wide" in batch:
+                images = (batch["image_tight"].to(device, non_blocking=True), batch["image_wide"].to(device, non_blocking=True))
+            else:
+                images = batch["image"].to(device, non_blocking=True)
             targets = batch["target"].to(device, non_blocking=True)
             optimizer.zero_grad(set_to_none=True)
             with torch.cuda.amp.autocast(enabled=use_amp):

@@ -99,6 +99,7 @@ def main(argv: list[str] | None = None) -> int:
         transforms_by_split=transforms_by_split,
         preprocessing_mode=str(config.get("preprocessing_mode", "raw_rgb")),
         include_masks=bool(config.get("include_masks", False)),
+        input_mode=str(config.get("model", {}).get("input_mode", "single_crop")),
     )
     loaders = build_dataloaders(
         datasets=datasets,

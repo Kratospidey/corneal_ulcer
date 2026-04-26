@@ -21,6 +21,7 @@ class CornealUlcerDataset(Dataset):
         transform=None,
         preprocessing_mode: str = "raw_rgb",
         include_masks: bool = False,
+        input_mode: str = "single_crop",
     ) -> None:
         self.rows = rows.reset_index(drop=True)
         self.label_column = label_column
@@ -30,20 +31,31 @@ class CornealUlcerDataset(Dataset):
         self.transform = transform
         self.preprocessing_mode = preprocessing_mode
         self.include_masks = include_masks
+        self.input_mode = input_mode
 
     def __len__(self) -> int:
         return len(self.rows)
 
     def __getitem__(self, index: int) -> dict[str, Any]:
         row = self.rows.iloc[index]
-        image = safe_open_image(Path(str(row["raw_image_path"])))
-        if self.preprocessing_mode == "raw_rgb":
-            image = prepare_raw_image(image)
-        else:
+        raw_image = safe_open_image(Path(str(row["raw_image_path"])))
+        
+        if self.input_mode == "dual_crop_context_v1":
             cornea_mask = load_cornea_mask(row.get("cornea_mask_path"))
-            image = prepare_paper_image(image, preprocessing_mode=self.preprocessing_mode, cornea_mask=cornea_mask)
-        if self.transform is not None:
-            image = self.transform(image)
+            image_tight = prepare_paper_image(raw_image.copy(), preprocessing_mode="cornea_crop_scale_v1", cornea_mask=cornea_mask)
+            image_wide = prepare_paper_image(raw_image.copy(), preprocessing_mode="cornea_crop_wide_context_v1", cornea_mask=cornea_mask)
+            if self.transform is not None:
+                image_tight = self.transform(image_tight)
+                image_wide = self.transform(image_wide)
+            image = image_tight  # for backwards compatibility
+        else:
+            if self.preprocessing_mode == "raw_rgb":
+                image = prepare_raw_image(raw_image)
+            else:
+                cornea_mask = load_cornea_mask(row.get("cornea_mask_path"))
+                image = prepare_paper_image(raw_image, preprocessing_mode=self.preprocessing_mode, cornea_mask=cornea_mask)
+            if self.transform is not None:
+                image = self.transform(image)
 
         label_name = str(row[self.label_column])
         payload: dict[str, Any] = {
@@ -56,6 +68,10 @@ class CornealUlcerDataset(Dataset):
             "ulcer_mask_path": str(row.get("ulcer_mask_path", "")),
             "split": self.split_name,
         }
+        if self.input_mode == "dual_crop_context_v1":
+            payload["image_tight"] = image_tight
+            payload["image_wide"] = image_wide
+            
         return payload
 
     def class_counts(self) -> dict[str, int]:
@@ -81,6 +97,7 @@ def build_datasets(
     transforms_by_split: dict[str, object],
     preprocessing_mode: str,
     include_masks: bool = False,
+    input_mode: str = "single_crop",
 ) -> dict[str, CornealUlcerDataset]:
     datasets: dict[str, CornealUlcerDataset] = {}
     for split_name in ("train", "val", "test"):
@@ -93,6 +110,7 @@ def build_datasets(
             transform=transforms_by_split[split_name],
             preprocessing_mode=preprocessing_mode,
             include_masks=include_masks,
+            input_mode=input_mode,
         )
     return datasets
 

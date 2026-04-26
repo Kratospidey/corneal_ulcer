@@ -103,6 +103,74 @@ class ConvNeXtV2Phase1Model(torch.nn.Module):
         return outputs
 
 
+class ConvNeXtV2DualCropContextModel(torch.nn.Module):
+    def __init__(
+        self,
+        *,
+        model_name: str,
+        pretrained: bool,
+        num_classes: int,
+        drop_path_rate: float,
+        drop_rate: float,
+        freeze_backbone: bool,
+        ordinal_config: dict[str, Any] | None = None,
+    ) -> None:
+        import timm  # type: ignore
+
+        super().__init__()
+        backbone_kwargs: dict[str, Any] = {
+            "pretrained": pretrained,
+            "num_classes": 0,
+            "global_pool": "",
+        }
+        if drop_path_rate > 0.0:
+            backbone_kwargs["drop_path_rate"] = drop_path_rate
+        if drop_rate > 0.0:
+            backbone_kwargs["drop_rate"] = drop_rate
+        self.backbone = timm.create_model(model_name, **backbone_kwargs)
+        self.num_classes = int(num_classes)
+        self.feature_dim = int(getattr(self.backbone, "num_features", 768))
+        self.ordinal_config = dict(ordinal_config or {})
+        self.enable_ordinal = bool(self.ordinal_config.get("enabled", False))
+
+        self.feature_norm = torch.nn.LayerNorm(self.feature_dim)
+        
+        # Concat fusion
+        self.classifier = torch.nn.Linear(self.feature_dim * 2, num_classes)
+        self.ordinal_head = torch.nn.Linear(self.feature_dim * 2, num_classes - 1) if self.enable_ordinal else None
+
+        if freeze_backbone:
+            for parameter in self.backbone.parameters():
+                parameter.requires_grad = False
+
+    def forward_features(self, x):
+        x = self.backbone.stem(x)
+        for stage in self.backbone.stages:
+            x = stage(x)
+        x = self.backbone.norm_pre(x)
+        x = x.mean(dim=(-2, -1))
+        return self.feature_norm(x)
+
+    def forward(self, inputs):
+        if isinstance(inputs, tuple):
+            image_tight, image_wide = inputs
+        else:
+            image_tight = image_wide = inputs
+            
+        tight_feat = self.forward_features(image_tight)
+        wide_feat = self.forward_features(image_wide)
+        fused = torch.cat((tight_feat, wide_feat), dim=1)
+        
+        logits = self.classifier(fused)
+        outputs = {
+            "logits": logits,
+            "features": fused,
+        }
+        if self.ordinal_head is not None:
+            outputs["ordinal_logits"] = self.ordinal_head(fused)
+        return outputs
+
+
 def model_outputs_to_dict(outputs) -> dict[str, Any]:
     if isinstance(outputs, dict):
         return outputs
@@ -134,8 +202,20 @@ def create_model(model_config: dict[str, Any], num_classes: int):
     drop_rate = float(model_config.get("drop_rate", 0.0))
     multiscale_config = dict(model_config.get("multiscale_head", {}))
     ordinal_config = dict(model_config.get("ordinal_aux", {}))
+    input_mode = str(model_config.get("input_mode", "single_crop"))
     if not model_name.startswith("convnextv2"):
         raise ValueError(f"Unsupported model: {model_name}")
+
+    if input_mode == "dual_crop_context_v1":
+        return ConvNeXtV2DualCropContextModel(
+            model_name=model_name,
+            pretrained=pretrained,
+            num_classes=num_classes,
+            drop_path_rate=drop_path_rate,
+            drop_rate=drop_rate,
+            freeze_backbone=freeze_backbone,
+            ordinal_config=ordinal_config,
+        )
 
     if bool(multiscale_config.get("enabled", False)) or bool(ordinal_config.get("enabled", False)):
         return ConvNeXtV2Phase1Model(
