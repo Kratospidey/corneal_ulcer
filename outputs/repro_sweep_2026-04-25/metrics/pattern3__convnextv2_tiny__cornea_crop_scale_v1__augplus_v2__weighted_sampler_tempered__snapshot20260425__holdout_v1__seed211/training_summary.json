@@ -1,0 +1,5 @@
+{
+  "best_epoch": 5,
+  "best_metric": 0.6835763816895892,
+  "checkpoint_path": "models/checkpoints/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__snapshot20260425__holdout_v1__seed211/best.pt"
+}

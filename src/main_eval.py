@@ -25,7 +25,9 @@ from evaluation.paper_figures import generate_paper_figure_bundle
 from evaluation.reports import save_metric_artifacts, write_experiment_report
 from experiment_utils import build_experiment_name, prepare_output_dirs, resolve_device, setup_logging
 from model_factory import create_model
+from provenance_utils import build_data_provenance
 from training.losses import build_loss, compute_class_weights
+from config_utils import write_json
 
 
 def build_parser() -> ArgumentParser:
@@ -79,7 +81,12 @@ def main(argv: list[str] | None = None) -> int:
         logger=logger,
     )
     manifest_df = load_manifest(split_config["manifest_path"])
-    split_df = load_split_dataframe(config.get("split_file", split_paths["holdout"]))
+    split_path = Path(config.get("split_file", split_paths["holdout"]))
+    data_provenance = build_data_provenance(
+        manifest_path=split_config["manifest_path"],
+        split_file=split_path,
+    )
+    split_df = load_split_dataframe(split_path)
     transforms_by_split = build_transforms(
         int(config.get("image_size", 224)),
         train_profile=str(config.get("train_transform_profile", "default")),
@@ -124,6 +131,10 @@ def main(argv: list[str] | None = None) -> int:
         class_weights=class_weights,
         focal_gamma=float(config.get("focal_gamma", 2.0)),
         label_smoothing=float(config.get("label_smoothing", 0.0)),
+        class_names=task_definition.class_names,
+        label_counts=datasets["train"].class_counts(),
+        logit_adjustment_tau=float(config.get("logit_adjustment_tau", 1.0)),
+        class_balanced_beta=float(config.get("class_balanced_beta", 0.999)),
     )
     emit_model_summary(console, model=model, training_config=config, class_weights=class_weights)
 
@@ -198,6 +209,16 @@ def main(argv: list[str] | None = None) -> int:
             )
         except Exception as exc:
             logger.warning("Automatic paper figure generation failed: %s", exc)
+    write_json(
+        output_dirs["reports"] / "run_metadata.json",
+        {
+            "config_path": args.config,
+            "checkpoint_path": args.checkpoint,
+            "device": device,
+            "evaluated_split": args.split,
+            "data_provenance": data_provenance,
+        },
+    )
     logger.info("Saved evaluation artifacts for %s split=%s", experiment_name, args.split)
     return 0
 

@@ -30,6 +30,8 @@ def run_training_pipeline(
     output_dirs: dict[str, Path],
     experiment_name: str,
     console=None,
+    teacher_model=None,
+    distillation_config: dict[str, Any] | None = None,
 ):
     checkpoint_path = output_dirs["models"] / "best.pt"
     show_progress = bool(training_config.get("show_progress", True))
@@ -44,6 +46,8 @@ def run_training_pipeline(
         training_config=training_config,
         checkpoint_path=checkpoint_path,
         console=console,
+        teacher_model=teacher_model,
+        distillation_config=distillation_config,
     )
     write_csv_rows(output_dirs["metrics"] / "history.csv", training_result.history)
     write_json(
@@ -66,7 +70,10 @@ def run_training_pipeline(
     split_metrics: dict[str, dict[str, Any]] = {}
     task_name = str(resolve_config(training_config["task_config"])["task_name"])
     source_config_path = training_config.get("_config_path")
-    for split_name in ("val", "test"):
+    evaluation_splits = ["val"]
+    if bool(training_config.get("evaluate_test_after_train", True)):
+        evaluation_splits.append("test")
+    for split_name in evaluation_splits:
         evaluation_payload = run_inference(
             model,
             loaders[split_name],
@@ -109,7 +116,7 @@ def run_training_pipeline(
         split_metrics[split_name] = {**metrics_payload["metrics"], **calibration_payload}
 
     figure_bundle = None
-    if bool(training_config.get("auto_generate_paper_figures", True)):
+    if bool(training_config.get("auto_generate_paper_figures", True)) and "test" in split_metrics:
         try:
             figure_bundle = generate_paper_figure_bundle(
                 train_config=training_config,

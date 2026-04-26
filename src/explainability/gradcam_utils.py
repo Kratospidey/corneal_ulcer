@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from model_factory import primary_logits
+
 
 def disable_inplace_relu(module) -> None:
     import torch  # type: ignore
@@ -30,7 +32,7 @@ class GradCAM:
         import torch  # type: ignore
 
         self.model.zero_grad(set_to_none=True)
-        logits = self.model(image_tensor)
+        logits = primary_logits(self.model(image_tensor))
         score = logits[:, target_index].sum()
         score.backward()
 

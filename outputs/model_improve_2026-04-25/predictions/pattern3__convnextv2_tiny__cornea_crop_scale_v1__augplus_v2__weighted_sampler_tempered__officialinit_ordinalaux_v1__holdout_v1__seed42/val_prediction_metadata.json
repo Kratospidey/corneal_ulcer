@@ -1,0 +1,21 @@
+{
+  "checkpoint_path": "models/exported/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_v1__holdout_v1__seed42/best.pt",
+  "class_names": [
+    "point_like",
+    "point_flaky_mixed",
+    "flaky"
+  ],
+  "logit_columns": [
+    "logit_point_like",
+    "logit_point_flaky_mixed",
+    "logit_flaky"
+  ],
+  "probability_columns": [
+    "prob_point_like",
+    "prob_point_flaky_mixed",
+    "prob_flaky"
+  ],
+  "source_config_path": "configs/model_improve/train_pattern3_officialinit_ordinalaux_v1.yaml",
+  "split": "val",
+  "task_name": "pattern_3class"
+}

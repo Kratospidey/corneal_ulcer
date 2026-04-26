@@ -12,13 +12,15 @@ from console_utils import (
     emit_split_metrics,
     get_console,
 )
+from checkpoint_utils import load_model_init_checkpoint
 from config_utils import resolve_config, write_json
 from data.dataset import build_dataloaders, build_datasets
 from data.label_utils import get_task_definition
 from data.split_utils import ensure_task_splits, load_manifest, load_split_dataframe
 from data.transforms import build_transforms
 from experiment_utils import build_experiment_name, prepare_output_dirs, resolve_device, set_seed, setup_logging
-from model_factory import create_model
+from model_factory import create_model, freeze_parameter_prefixes
+from provenance_utils import build_data_provenance
 from training.losses import build_loss, compute_class_weights
 from training.optim_utils import build_optimizer, build_scheduler
 from training.samplers import build_sampler
@@ -79,6 +81,10 @@ def main(argv: list[str] | None = None) -> int:
         logger=logger,
     )
     split_path = Path(config.get("split_file", split_paths["holdout"]))
+    data_provenance = build_data_provenance(
+        manifest_path=split_config["manifest_path"],
+        split_file=split_path,
+    )
 
     manifest_df = load_manifest(split_config["manifest_path"])
     split_df = load_split_dataframe(split_path)
@@ -118,6 +124,23 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     model = create_model(config["model"], num_classes=len(task_definition.class_names)).to(device)
+    init_checkpoint_summary = None
+    init_checkpoint_path = config.get("init_checkpoint_path")
+    if init_checkpoint_path:
+        init_checkpoint_summary = load_model_init_checkpoint(model, init_checkpoint_path, map_location=device)
+        logger.info(
+            "Initialized %s from %s with %d loaded keys (%d missing, %d mismatched).",
+            experiment_name,
+            init_checkpoint_summary["checkpoint_path"],
+            init_checkpoint_summary["loaded_keys"],
+            len(init_checkpoint_summary["missing_keys"]),
+            len(init_checkpoint_summary["skipped_shape_mismatch_keys"]),
+        )
+    freeze_prefixes = [str(prefix) for prefix in config.get("freeze_prefixes", []) or [] if str(prefix).strip()]
+    frozen_parameter_names: list[str] = []
+    if freeze_prefixes:
+        frozen_parameter_names = freeze_parameter_prefixes(model, freeze_prefixes)
+        logger.info("Applied prefix-based freezing to %d parameters using prefixes=%s", len(frozen_parameter_names), freeze_prefixes)
     class_weights = None
     if bool(config.get("use_class_weights", True)):
         class_weights = compute_class_weights(task_definition.class_names, datasets["train"].class_counts()).to(device)
@@ -126,8 +149,31 @@ def main(argv: list[str] | None = None) -> int:
         class_weights=class_weights,
         focal_gamma=float(config.get("focal_gamma", 2.0)),
         label_smoothing=float(config.get("label_smoothing", 0.0)),
+        class_names=task_definition.class_names,
+        label_counts=datasets["train"].class_counts(),
+        logit_adjustment_tau=float(config.get("logit_adjustment_tau", 1.0)),
+        class_balanced_beta=float(config.get("class_balanced_beta", 0.999)),
     )
     emit_model_summary(console, model=model, training_config=config, class_weights=class_weights)
+    distillation_config = dict(config.get("distillation", {}) or {})
+    teacher_model = None
+    teacher_checkpoint_summary = None
+    if bool(distillation_config.get("enabled", False)):
+        teacher_config_path = distillation_config.get("teacher_config_path") or args.config
+        teacher_config = resolve_config(teacher_config_path)
+        teacher_model = create_model(teacher_config["model"], num_classes=len(task_definition.class_names)).to(device)
+        teacher_checkpoint_path = distillation_config.get("teacher_checkpoint_path")
+        if not teacher_checkpoint_path:
+            raise ValueError("Distillation is enabled but teacher_checkpoint_path is missing.")
+        teacher_checkpoint_summary = load_model_init_checkpoint(teacher_model, teacher_checkpoint_path, map_location=device)
+        teacher_model.eval()
+        for parameter in teacher_model.parameters():
+            parameter.requires_grad = False
+        logger.info(
+            "Loaded frozen teacher from %s with %d keys for distillation.",
+            teacher_checkpoint_summary["checkpoint_path"],
+            teacher_checkpoint_summary["loaded_keys"],
+        )
     optimizer = build_optimizer(model, config)
     scheduler = build_scheduler(optimizer, config)
 
@@ -143,12 +189,20 @@ def main(argv: list[str] | None = None) -> int:
         output_dirs=output_dirs,
         experiment_name=experiment_name,
         console=console,
+        teacher_model=teacher_model,
+        distillation_config=distillation_config,
     )
     write_json(
         output_dirs["reports"] / "run_metadata.json",
         {
             "config_path": args.config,
             "device": device,
+            "data_provenance": data_provenance,
+            "init_checkpoint": init_checkpoint_summary,
+            "teacher_checkpoint": teacher_checkpoint_summary,
+            "distillation": distillation_config if distillation_config else None,
+            "freeze_prefixes": freeze_prefixes,
+            "frozen_parameter_names": frozen_parameter_names,
             **results["splits"],
         },
     )

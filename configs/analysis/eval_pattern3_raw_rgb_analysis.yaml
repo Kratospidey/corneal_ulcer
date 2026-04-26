@@ -1,0 +1,5 @@
+base_config: ../train_convnextv2_raw.yaml
+output_root: outputs/analysis_checkpoint_boundary
+auto_generate_paper_figures: false
+show_progress: false
+num_workers: 0

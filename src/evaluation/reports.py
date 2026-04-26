@@ -8,6 +8,7 @@ from evaluation.metrics import flatten_classification_report
 from evaluation.prediction_contract import (
     build_prediction_provenance,
     build_prediction_row,
+    logit_column_names,
     validate_prediction_provenance,
     validate_prediction_rows,
 )
@@ -63,6 +64,7 @@ def save_metric_artifacts(
     save_curve_artifacts(metrics_payload["curves"], output_dirs, split_name)
 
     prediction_rows = []
+    logit_matrix = evaluation_payload.get("logits")
     for base_row, target, pred, probs in zip(
         evaluation_payload["prediction_rows"],
         evaluation_payload["y_true"],
@@ -75,6 +77,7 @@ def save_metric_artifacts(
                 base_row=base_row,
                 class_names=class_names,
                 probabilities=[float(value) for value in probs.tolist()],
+                logits=[float(value) for value in (base_row.get("logits") or [])] if base_row.get("logits") else None,
                 extras={
                     "confidence": base_row.get("confidence"),
                     "raw_image_path": base_row.get("raw_image_path", ""),
@@ -95,6 +98,7 @@ def save_metric_artifacts(
             split_name=split_name,
             source_config_path=source_config_path,
             checkpoint_path=checkpoint_path,
+            include_logits=bool(logit_matrix is not None),
         )
         validate_prediction_provenance(
             prediction_provenance,

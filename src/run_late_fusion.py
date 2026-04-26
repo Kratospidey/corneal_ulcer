@@ -22,6 +22,7 @@ from evaluation.promotion import build_promotion_reference_block
 from evaluation.reports import write_experiment_report
 from experiment_utils import prepare_output_dirs, resolve_device, setup_logging, write_csv_rows
 from model_factory import create_model
+from provenance_utils import build_data_provenance
 from training.losses import build_loss, compute_class_weights
 
 
@@ -84,6 +85,10 @@ def _build_component_prediction_tables(component: dict[str, Any], split_name: st
         class_weights=class_weights,
         focal_gamma=float(train_config.get("focal_gamma", 2.0)),
         label_smoothing=float(train_config.get("label_smoothing", 0.0)),
+        class_names=task_definition.class_names,
+        label_counts=datasets["train"].class_counts(),
+        logit_adjustment_tau=float(train_config.get("logit_adjustment_tau", 1.0)),
+        class_balanced_beta=float(train_config.get("class_balanced_beta", 0.999)),
     )
     payload = run_inference(model, loaders[split_name], device=device, criterion=criterion)
 
@@ -96,6 +101,7 @@ def _build_component_prediction_tables(component: dict[str, Any], split_name: st
                 base_row=base_row,
                 class_names=task_definition.class_names,
                 probabilities=probs,
+                logits=[float(value) for value in (base_row.get("logits") or [])] if base_row.get("logits") else None,
                 extras={
                     "raw_image_path": str(base_row.get("raw_image_path", "")),
                     "cornea_mask_path": str(base_row.get("cornea_mask_path", "")),
@@ -113,6 +119,7 @@ def _build_component_prediction_tables(component: dict[str, Any], split_name: st
         split_name=split_name,
         source_config_path=component["config_path"],
         checkpoint_path=component["checkpoint_path"],
+        include_logits=True,
     )
     validate_prediction_rows(prediction_rows, class_names=task_definition.class_names, split_name=split_name)
     validate_prediction_provenance(
@@ -128,6 +135,10 @@ def _build_component_prediction_tables(component: dict[str, Any], split_name: st
         "provenance": prediction_provenance,
         "class_names": task_definition.class_names,
         "split_file": str(train_config.get("split_file", split_paths["holdout"])),
+        "data_provenance": build_data_provenance(
+            manifest_path=split_config["manifest_path"],
+            split_file=train_config.get("split_file", split_paths["holdout"]),
+        ),
     }
 
 
@@ -285,11 +296,13 @@ def main(argv: list[str] | None = None) -> int:
 
     component_payloads_by_split: dict[str, list[dict[str, Any]]] = {"val": [], "test": []}
     split_file = None
+    data_provenance = None
     for component in config["inference"]["models"]:
         for split_name in ("val", "test"):
             payload = _build_component_prediction_tables(component, split_name=split_name, device=device, logger=logger)
             class_names = payload["class_names"]
             split_file = payload["split_file"]
+            data_provenance = payload.get("data_provenance", data_provenance)
             component_payloads_by_split[split_name].append(payload)
 
     if tuple(class_names) != tuple(task_definition.class_names):
@@ -404,6 +417,7 @@ def main(argv: list[str] | None = None) -> int:
                 for component, weight in zip(config["inference"]["models"], weights, strict=False)
             },
             "split_file": split_file,
+            "data_provenance": data_provenance,
             "summary": summary_rows,
         },
     )
