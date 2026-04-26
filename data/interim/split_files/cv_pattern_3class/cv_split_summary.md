@@ -1,0 +1,18 @@
+# CV Split Summary for pattern_3class
+
+**Total Dataset Count:** 712
+**Total Class Counts:** {'point_like': 358, 'point_flaky_mixed': 263, 'flaky': 91}
+**Splitter:** StratifiedKFold (n_splits=10, seed=42)
+
+| Fold | Train | Val | Test | Train Breakdown | Val Breakdown | Test Breakdown |
+|---|---|---|---|---|---|---|
+| 0 | 568 | 72 | 72 | point_like: 286 (50.4%), point_flaky_mixed: 210 (37.0%), flaky: 72 (12.7%) | point_like: 36 (50.0%), point_flaky_mixed: 26 (36.1%), flaky: 10 (13.9%) | point_like: 36 (50.0%), point_flaky_mixed: 27 (37.5%), flaky: 9 (12.5%) |
+| 1 | 569 | 71 | 72 | point_like: 286 (50.3%), point_flaky_mixed: 211 (37.1%), flaky: 72 (12.7%) | point_like: 36 (50.7%), point_flaky_mixed: 26 (36.6%), flaky: 9 (12.7%) | point_like: 36 (50.0%), point_flaky_mixed: 26 (36.1%), flaky: 10 (13.9%) |
+| 2 | 570 | 71 | 71 | point_like: 286 (50.2%), point_flaky_mixed: 211 (37.0%), flaky: 73 (12.8%) | point_like: 36 (50.7%), point_flaky_mixed: 26 (36.6%), flaky: 9 (12.7%) | point_like: 36 (50.7%), point_flaky_mixed: 26 (36.6%), flaky: 9 (12.7%) |
+| 3 | 570 | 71 | 71 | point_like: 286 (50.2%), point_flaky_mixed: 211 (37.0%), flaky: 73 (12.8%) | point_like: 36 (50.7%), point_flaky_mixed: 26 (36.6%), flaky: 9 (12.7%) | point_like: 36 (50.7%), point_flaky_mixed: 26 (36.6%), flaky: 9 (12.7%) |
+| 4 | 570 | 71 | 71 | point_like: 286 (50.2%), point_flaky_mixed: 211 (37.0%), flaky: 73 (12.8%) | point_like: 36 (50.7%), point_flaky_mixed: 26 (36.6%), flaky: 9 (12.7%) | point_like: 36 (50.7%), point_flaky_mixed: 26 (36.6%), flaky: 9 (12.7%) |
+| 5 | 570 | 71 | 71 | point_like: 286 (50.2%), point_flaky_mixed: 211 (37.0%), flaky: 73 (12.8%) | point_like: 36 (50.7%), point_flaky_mixed: 26 (36.6%), flaky: 9 (12.7%) | point_like: 36 (50.7%), point_flaky_mixed: 26 (36.6%), flaky: 9 (12.7%) |
+| 6 | 570 | 71 | 71 | point_like: 286 (50.2%), point_flaky_mixed: 211 (37.0%), flaky: 73 (12.8%) | point_like: 36 (50.7%), point_flaky_mixed: 26 (36.6%), flaky: 9 (12.7%) | point_like: 36 (50.7%), point_flaky_mixed: 26 (36.6%), flaky: 9 (12.7%) |
+| 7 | 570 | 71 | 71 | point_like: 287 (50.4%), point_flaky_mixed: 210 (36.8%), flaky: 73 (12.8%) | point_like: 35 (49.3%), point_flaky_mixed: 27 (38.0%), flaky: 9 (12.7%) | point_like: 36 (50.7%), point_flaky_mixed: 26 (36.6%), flaky: 9 (12.7%) |
+| 8 | 570 | 71 | 71 | point_like: 288 (50.5%), point_flaky_mixed: 209 (36.7%), flaky: 73 (12.8%) | point_like: 35 (49.3%), point_flaky_mixed: 27 (38.0%), flaky: 9 (12.7%) | point_like: 35 (49.3%), point_flaky_mixed: 27 (38.0%), flaky: 9 (12.7%) |
+| 9 | 569 | 72 | 71 | point_like: 287 (50.4%), point_flaky_mixed: 209 (36.7%), flaky: 73 (12.8%) | point_like: 36 (50.0%), point_flaky_mixed: 27 (37.5%), flaky: 9 (12.5%) | point_like: 35 (49.3%), point_flaky_mixed: 27 (38.0%), flaky: 9 (12.7%) |
