@@ -18,13 +18,6 @@
 - **ROC Curves:** `outputs/roc_curves/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_w0035__holdout_v1__seed42`
 - **PR Curves:** `outputs/pr_curves/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_w0035__holdout_v1__seed42`
 - **Explainability (XAI):** `outputs/explainability/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_w0035__holdout_v1__seed42`
-- **Layer-wise Feature Probes:** `outputs/layer_probe/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_w0035__holdout_v1__seed42`
-
-## Layer-wise Balanced Accuracy Feature Probe
-- **Top Table (Markdown):** `outputs/layer_probe/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_w0035__holdout_v1__seed42/layer_probe_top_table.md`
-- **Top Table (LaTeX):** `outputs/layer_probe/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_w0035__holdout_v1__seed42/layer_probe_top_table.tex`
-- **Two-Column LaTeX Table:** `outputs/layer_probe/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_w0035__holdout_v1__seed42/layer_probe_balanced_accuracy_table_twocol.tex`
-- **Bar Chart:** `outputs/layer_probe/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_w0035__holdout_v1__seed42/layer_probe_bar_chart.png`
 
 ## Friend Share Bundle
 **Zip Archive:** `outputs/friend_share/w0035_best_challenger_figures_bundle.zip`
@@ -32,4 +25,4 @@
 ## Notes
 - `best.pt` is local and ignored by Git.
 - Evaluation split: `test`.
-- The five highest mean balanced-accuracy layers are bolded in the probe tables.
+- Layer-wise feature-probe analysis is excluded from the share bundle because it reports shallow-probe scores from frozen intermediate features, not final model accuracy.
