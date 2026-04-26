@@ -77,3 +77,10 @@ Best no-retrain checkpoint interpolation candidate:
 - Keep the task as `pattern_3class`.
 - Keep the backbone family as `convnextv2_tiny` unless there is explicit new evidence.
 - Do not confuse the official single checkpoint with the late-fusion deployment rule.
+
+## Cross-validation robustness benchmark
+
+- uses w0035-style recipe
+- does not warm-start from w0035 checkpoint
+- does not replace fixed holdout
+- reports mean/std across folds

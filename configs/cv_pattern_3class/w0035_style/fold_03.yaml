@@ -1,0 +1,13 @@
+base_config: ../../train_convnextv2_tiny_cornea_crop_scale_v1_augplus_v2_weighted_sampler_tempered.yaml
+experiment_name: pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__ordinalaux_w0035style__cv10_fold03__seed42
+output_root: outputs/cv_pattern_3class/w0035_style
+epochs: 6
+early_stopping_patience: 3
+lr: 2.0e-05
+num_workers: 4
+ordinal_aux_weight: 0.035
+seed: 4203
+split_file: data/interim/split_files/cv_pattern_3class/fold_03.csv
+model:
+  ordinal_aux:
+    enabled: true
