@@ -1,0 +1,60 @@
+flowchart TD
+    accTitle: Model Development Summary
+    accDescr: A summary of the development path from the official anchor to the w0035 challenger model, including rejected follow-ups.
+
+    subgraph start[Start]
+        off["Official checkpoint"]
+        off_ba["BA 0.8482"]
+        off_f1["Macro F1 0.7990"]
+        off --> off_ba --> off_f1
+    end
+
+    subgraph path[Improvement path]
+        warm["official warm-start"]
+        aux["ordinal auxiliary loss"]
+        grid["weight grid"]
+        sel["w0035 selected"]
+        warm --> aux --> grid --> sel
+    end
+
+    subgraph best[Best model]
+        w0035["w0035"]
+        w0035_ba["BA 0.8671"]
+        w0035_f1["Macro F1 0.8546"]
+        w0035 --> w0035_ba --> w0035_f1
+    end
+
+    subgraph rejected[Rejected follow-ups]
+        dual["dual-crop context"]
+        crop["crop consistency"]
+        seed["seed reruns"]
+        soup["checkpoint soup\nlogit soup"]
+        ssl["SLID + SLIT-Net SimSiam SSL"]
+        cv["10-fold CV robustness check"]
+        
+        dual ~~~ crop ~~~ seed ~~~ soup ~~~ ssl ~~~ cv
+    end
+
+    subgraph conclusion[Conclusion]
+        ret["w0035 retained as final fixed-holdout model"]
+        sens["CV shows split sensitivity"]
+        future["future work: more labeled target-like data / anatomy-aware pretraining"]
+        
+        ret ~~~ sens ~~~ future
+    end
+
+    start -->|"Explore"| path
+    path -->|"Select"| best
+    best -->|"Evaluate Alternatives"| rejected
+    rejected -->|"Conclude"| conclusion
+
+    classDef default fill:#f9fafb,stroke:#cbd5e1,stroke-width:1px,color:#1e293b
+    classDef startClass fill:#e2e8f0,stroke:#94a3b8,stroke-width:2px,color:#334155
+    classDef bestClass fill:#bbf7d0,stroke:#22c55e,stroke-width:2px,color:#14532d
+    classDef rejectedClass fill:#fecaca,stroke:#ef4444,stroke-width:2px,color:#7f1d1d
+    classDef conclusionClass fill:#bfdbfe,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a
+
+    class start startClass
+    class best bestClass
+    class rejected rejectedClass
+    class conclusion conclusionClass

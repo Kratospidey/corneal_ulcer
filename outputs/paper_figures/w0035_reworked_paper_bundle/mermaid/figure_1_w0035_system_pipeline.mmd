@@ -1,0 +1,77 @@
+flowchart LR
+    accTitle: w0035 System Pipeline
+    accDescr: Complete workflow of the w0035 corneal ulcer pattern classification system, from dataset processing to final model outputs.
+
+    subgraph data[Data]
+        manifest["Dataset manifest"]
+        holdout["Frozen holdout split"]
+        classes["Classes:\n- point_like\n- point_flaky_mixed\n- flaky"]
+        
+        manifest --> holdout
+        holdout --> classes
+    end
+
+    subgraph preproc[Preprocessing]
+        raw["Raw slit-lamp image"]
+        mask["Cornea mask"]
+        norm["Mask normalization"]
+        crop["Cornea-centered crop"]
+        resize["Resize to 224"]
+        
+        raw & mask --> norm
+        norm --> crop
+        crop --> resize
+    end
+
+    subgraph train[Training]
+        aug["Online augmentation"]
+        sampler["Weighted sampler"]
+        wce["Weighted cross-entropy"]
+        ord["Ordinal auxiliary training"]
+        val["Validation BA checkpoint selection"]
+        
+        aug --> sampler
+        sampler --> wce & ord
+        wce & ord --> val
+    end
+
+    subgraph model[Model]
+        backbone["ConvNeXtV2 Tiny backbone"]
+        head["3-class classifier"]
+        
+        backbone --> head
+    end
+
+    subgraph outputs[Outputs]
+        pred["Evaluation artifacts"]
+        xai["Grad-CAM explainability"]
+        
+        pred -.- xai
+    end
+
+    subgraph metrics[Final Metrics]
+        ba["BA: 0.8671"]
+        f1["Macro F1: 0.8546"]
+        acc["Accuracy: 0.8796"]
+        
+        ba -.- f1 -.- acc
+    end
+
+    data --> preproc
+    preproc --> train
+    train --> model
+    model --> outputs
+    outputs --> metrics
+
+    classDef default fill:#f9fafb,stroke:#cbd5e1,stroke-width:1px,color:#1e293b
+    classDef dataClass fill:#e0f2fe,stroke:#38bdf8,stroke-width:2px,color:#0c4a6e
+    classDef preprocClass fill:#fef08a,stroke:#eab308,stroke-width:2px,color:#713f12
+    classDef trainClass fill:#e9d5ff,stroke:#a855f7,stroke-width:2px,color:#4c1d95
+    classDef modelClass fill:#99f6e4,stroke:#14b8a6,stroke-width:2px,color:#134e4a
+    classDef outputClass fill:#fecdd3,stroke:#f43f5e,stroke-width:2px,color:#881337
+
+    class data,manifest,holdout,classes dataClass
+    class preproc,raw,mask,norm,crop,resize preprocClass
+    class train,aug,sampler,wce,ord,val trainClass
+    class model,backbone,head modelClass
+    class outputs,pred,xai,metrics,ba,f1,acc outputClass

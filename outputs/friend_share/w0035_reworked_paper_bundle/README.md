@@ -1,0 +1,1 @@
+This bundle contains reworked paper-ready figures for the w0035 fixed-holdout model. It includes Mermaid source diagrams and rendered figures where available. It does not include the checkpoint file best.pt.

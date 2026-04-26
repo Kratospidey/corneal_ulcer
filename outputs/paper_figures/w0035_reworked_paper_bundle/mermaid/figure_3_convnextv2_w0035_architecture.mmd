@@ -1,0 +1,107 @@
+flowchart TD
+    accTitle: ConvNeXtV2 w0035 Architecture
+    accDescr: The detailed architecture of the ConvNeXtV2 Tiny backbone used in the w0035 model.
+
+    subgraph input[Input]
+        rgb["RGB crop\n3 x 224 x 224"]
+    end
+
+    subgraph stem[Stem]
+        stem_conv["4x4 conv, stride 4"]
+        stem_out["96 x 56 x 56"]
+        stem_conv --> stem_out
+    end
+
+    subgraph stage1[Stage 1]
+        s1_blocks["3 ConvNeXtV2 blocks\n96 channels"]
+        s1_out["56 x 56"]
+        s1_blocks --> s1_out
+    end
+
+    subgraph down1[Downsample 1]
+        d1_conv["2x2 stride 2"]
+        d1_out["192 x 28 x 28"]
+        d1_conv --> d1_out
+    end
+
+    subgraph stage2[Stage 2]
+        s2_blocks["3 ConvNeXtV2 blocks\n192 channels"]
+        s2_out["28 x 28"]
+        s2_blocks --> s2_out
+    end
+
+    subgraph down2[Downsample 2]
+        d2_conv["2x2 stride 2"]
+        d2_out["384 x 14 x 14"]
+        d2_conv --> d2_out
+    end
+
+    subgraph stage3[Stage 3]
+        s3_blocks["9 ConvNeXtV2 blocks\n384 channels"]
+        s3_out["14 x 14"]
+        s3_blocks --> s3_out
+    end
+
+    subgraph down3[Downsample 3]
+        d3_conv["2x2 stride 2"]
+        d3_out["768 x 7 x 7"]
+        d3_conv --> d3_out
+    end
+
+    subgraph stage4[Stage 4]
+        s4_blocks["3 ConvNeXtV2 blocks\n768 channels"]
+        s4_out["7 x 7"]
+        s4_blocks --> s4_out
+    end
+
+    subgraph head[Head]
+        gap["Global average pooling"]
+        ln["LayerNorm"]
+        linear["Linear 768 to 3"]
+        softmax["Softmax"]
+        
+        gap --> ln --> linear --> softmax
+    end
+
+    subgraph ordinal[Training-only branch]
+        ord_head["Ordinal auxiliary head"]
+        ord_weight["loss weight 0.035"]
+        ord_train["training only"]
+        
+        ord_head --> ord_weight --> ord_train
+    end
+
+    subgraph outputs[Outputs]
+        pl["point_like"]
+        pfm["point_flaky_mixed"]
+        fl["flaky"]
+    end
+
+    input --> stem
+    stem --> stage1
+    stage1 --> down1
+    down1 --> stage2
+    stage2 --> down2
+    down2 --> stage3
+    stage3 --> down3
+    down3 --> stage4
+    stage4 --> head
+    stage4 -.->|"Features"| ordinal
+    head --> outputs
+
+    classDef default fill:#f9fafb,stroke:#cbd5e1,stroke-width:1px,color:#1e293b
+    classDef stemClass fill:#5eead4,stroke:#14b8a6,stroke-width:2px,color:#134e4a
+    classDef stage1Class fill:#2dd4bf,stroke:#0d9488,stroke-width:2px,color:#134e4a
+    classDef stage2Class fill:#14b8a6,stroke:#0f766e,stroke-width:2px,color:#134e4a
+    classDef stage3Class fill:#0d9488,stroke:#115e59,stroke-width:2px,color:#134e4a
+    classDef stage4Class fill:#0f766e,stroke:#134e4a,stroke-width:2px,color:#ccfbf1
+    classDef headClass fill:#fbcfe8,stroke:#f43f5e,stroke-width:2px,color:#831843
+    classDef ordinalClass fill:#fecaca,stroke:#ef4444,stroke-width:2px,color:#7f1d1d
+
+    class stem stemClass
+    class stage1 stage1Class
+    class stage2 stage2Class
+    class stage3 stage3Class
+    class stage4 stage4Class
+    class head headClass
+    class ordinal ordinalClass
