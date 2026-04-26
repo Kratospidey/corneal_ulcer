@@ -1,0 +1,17 @@
+model:
+  name: convnextv2_tiny
+  pretrained: true
+
+image_size: 224
+batch_size: 16
+epochs: 30
+optimizer: adamw
+lr: 1.0e-4
+weight_decay: 1.0e-4
+scheduler: cosine
+amp: true
+num_workers: 4
+seed: 42
+
+manifest_path: data/external_manifests/slitlamp_external_ssl_manifest.csv
+output_dir: models/pretrained_external/convnextv2_tiny_slid_slitnet_simsiam_v1

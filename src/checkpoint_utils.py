@@ -113,3 +113,41 @@ def load_model_init_checkpoint(model, checkpoint_path: str | Path, map_location:
         "unexpected_keys": list(load_result.unexpected_keys),
         "skipped_shape_mismatch_keys": skipped_mismatches,
     }
+
+
+def load_external_backbone_only(model, checkpoint_path: str | Path, map_location: str = "cpu") -> dict[str, Any]:
+    checkpoint_file = Path(checkpoint_path)
+    checkpoint = load_checkpoint_payload(checkpoint_file, map_location=map_location)
+    state_dict = extract_checkpoint_state_dict(checkpoint)
+
+    # Filter state_dict to keep only backbone keys if they aren't already prefixed
+    # or ensure they match backbone.* in target
+    backbone_state: dict[str, Any] = {}
+    for key, value in state_dict.items():
+        if key.startswith("backbone."):
+            backbone_state[key] = value
+        else:
+            backbone_state[f"backbone.{key}"] = value
+
+    # We only want to load into model.backbone
+    target_state = model.state_dict()
+    final_filtered: dict[str, Any] = {}
+    skipped_mismatches: list[str] = []
+
+    for key, value in backbone_state.items():
+        if key in target_state:
+            target = target_state[key]
+            if tuple(value.shape) == tuple(target.shape):
+                final_filtered[key] = value
+            else:
+                skipped_mismatches.append(f"{key} (shape mismatch)")
+
+    load_result = model.load_state_dict(final_filtered, strict=False)
+    return {
+        "checkpoint_path": str(checkpoint_file),
+        "mode": "external_backbone_only",
+        "loaded_keys": len(final_filtered),
+        "missing_keys": list(load_result.missing_keys),
+        "unexpected_keys": list(load_result.unexpected_keys),
+        "skipped_shape_mismatch_keys": skipped_mismatches,
+    }

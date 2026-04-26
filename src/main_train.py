@@ -126,12 +126,26 @@ def main(argv: list[str] | None = None) -> int:
 
     model = create_model(config["model"], num_classes=len(task_definition.class_names)).to(device)
     init_checkpoint_summary = None
-    init_checkpoint_path = config.get("init_checkpoint_path")
-    if init_checkpoint_path:
-        init_checkpoint_summary = load_model_init_checkpoint(model, init_checkpoint_path, map_location=device)
+    
+    # New dictionary-style init config support
+    init_config = config.get("init", {})
+    if isinstance(init_config, str): # Backward compatibility if someone puts path in 'init'
+         init_config = {"path": init_config}
+         
+    init_mode = init_config.get("mode", "standard")
+    init_path = init_config.get("path") or config.get("init_checkpoint_path")
+    
+    if init_path:
+        if init_mode == "external_backbone":
+            from checkpoint_utils import load_external_backbone_only
+            init_checkpoint_summary = load_external_backbone_only(model, init_path, map_location=device)
+        else:
+            init_checkpoint_summary = load_model_init_checkpoint(model, init_path, map_location=device)
+            
         logger.info(
-            "Initialized %s from %s with %d loaded keys (%d missing, %d mismatched).",
+            "Initialized %s (mode=%s) from %s with %d loaded keys (%d missing, %d mismatched).",
             experiment_name,
+            init_mode,
             init_checkpoint_summary["checkpoint_path"],
             init_checkpoint_summary["loaded_keys"],
             len(init_checkpoint_summary["missing_keys"]),

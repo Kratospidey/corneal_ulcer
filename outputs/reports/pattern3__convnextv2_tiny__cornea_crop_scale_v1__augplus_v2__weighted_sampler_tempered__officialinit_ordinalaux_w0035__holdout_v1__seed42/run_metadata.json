@@ -1,0 +1,22 @@
+{
+  "checkpoint_path": "models/exported/pattern3__convnextv2_tiny__cornea_crop_scale_v1__augplus_v2__weighted_sampler_tempered__officialinit_ordinalaux_w0035__holdout_v1__seed42/best.pt",
+  "config_path": "configs/model_improve/ordinal_weight_grid/train_pattern3_officialinit_ordinalaux_w0035.yaml",
+  "data_provenance": {
+    "manifest": {
+      "exists": true,
+      "git_tracked": false,
+      "path": "data/interim/manifests/manifest.csv",
+      "sha256": "a7efafece1924bf38d953e24b7b15ce2aa517d7e3058a5becd12fe950464ec3b",
+      "size_bytes": 197466
+    },
+    "split_file": {
+      "exists": true,
+      "git_tracked": false,
+      "path": "data/interim/split_files/pattern_3class_holdout.csv",
+      "sha256": "9e37a668b20a6b9f988ebcfbde9b46824a438cad5aa04ca18445ae8db0d72021",
+      "size_bytes": 30081
+    }
+  },
+  "device": "cuda",
+  "evaluated_split": "test"
+}

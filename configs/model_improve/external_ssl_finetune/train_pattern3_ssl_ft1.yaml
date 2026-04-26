@@ -1,0 +1,6 @@
+base_config: ../ordinal_weight_grid/train_pattern3_officialinit_ordinalaux_w0035.yaml
+experiment_name: pattern3__convnextv2_tiny__externalssl_v1__ordinalaux_w0035__holdout_v1__seed42
+output_root: outputs/model_improve_external_ssl_2026-04-26
+init:
+  mode: external_backbone
+  path: models/pretrained_external/convnextv2_tiny_slid_slitnet_simsiam_v1/backbone.pt

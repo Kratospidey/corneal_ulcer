@@ -1,0 +1,3 @@
+base_config: ./train_pattern3_ssl_ft1.yaml
+experiment_name: pattern3__convnextv2_tiny__externalssl_v1__ordinalaux_w0025__holdout_v1__seed42
+ordinal_aux_weight: 0.025
