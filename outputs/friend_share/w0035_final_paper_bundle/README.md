@@ -1,0 +1,1 @@
+This bundle contains paper-ready visual artifacts for the w0035 fixed-holdout model. It does not include the checkpoint file best.pt.
