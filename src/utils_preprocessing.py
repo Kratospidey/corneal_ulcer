@@ -73,6 +73,25 @@ def extract_cornea_crop_scale_v1(image, cornea_mask):
     )
 
 
+def extract_cornea_crop_slightly_tight(image, cornea_mask):
+    return _extract_cornea_square_crop(
+        image,
+        cornea_mask,
+        context_ratio=0.10,
+        min_side_ratio=0.65,
+        max_side_ratio=0.90,
+    )
+
+
+def extract_cornea_crop_slightly_wide(image, cornea_mask):
+    return _extract_cornea_square_crop(
+        image,
+        cornea_mask,
+        context_ratio=0.25,
+        min_side_ratio=0.75,
+        max_side_ratio=1.00,
+    )
+
 def extract_cornea_crop_wide_context_v1(image, cornea_mask):
     return _extract_cornea_square_crop(
         image,
@@ -81,6 +100,32 @@ def extract_cornea_crop_wide_context_v1(image, cornea_mask):
         min_side_ratio=0.88,
         max_side_ratio=1.00,
     )
+
+def _extract_shifted_cornea_crop(image, cornea_mask, x_shift_ratio: float, y_shift_ratio: float):
+    rgb = image.convert("RGB")
+    if cornea_mask is None:
+        return rgb
+
+    bbox = normalize_cornea_mask(cornea_mask).getbbox()
+    if bbox is None:
+        return rgb
+
+    left, top, right, bottom = bbox
+    width = max(1, right - left)
+    height = max(1, bottom - top)
+    side = float(max(width, height)) * (1.0 + 0.18 * 2.0)
+    short_side = float(min(rgb.width, rgb.height))
+    side = max(side, short_side * 0.72)
+    side = min(side, short_side * 0.98)
+    side = max(1, int(round(side)))
+
+    center_x = (left + right) / 2.0 + (x_shift_ratio * side)
+    center_y = (top + bottom) / 2.0 + (y_shift_ratio * side)
+    crop_left = int(round(center_x - side / 2.0))
+    crop_top = int(round(center_y - side / 2.0))
+    crop_right = crop_left + side
+    crop_bottom = crop_top + side
+    return rgb.crop((crop_left, crop_top, crop_right, crop_bottom))
 
 
 def apply_variant(image, variant_name: str, cornea_mask=None):
@@ -91,8 +136,20 @@ def apply_variant(image, variant_name: str, cornea_mask=None):
         return rgb
     if variant_name == "cornea_crop_scale_v1":
         return extract_cornea_crop_scale_v1(rgb, cornea_mask)
+    if variant_name == "cornea_crop_slightly_tight":
+        return extract_cornea_crop_slightly_tight(rgb, cornea_mask)
+    if variant_name == "cornea_crop_slightly_wide":
+        return extract_cornea_crop_slightly_wide(rgb, cornea_mask)
     if variant_name == "cornea_crop_wide_context_v1":
         return extract_cornea_crop_wide_context_v1(rgb, cornea_mask)
+    if variant_name == "shift_left_up":
+        return _extract_shifted_cornea_crop(rgb, cornea_mask, x_shift_ratio=-0.05, y_shift_ratio=-0.05)
+    if variant_name == "shift_right_down":
+        return _extract_shifted_cornea_crop(rgb, cornea_mask, x_shift_ratio=0.05, y_shift_ratio=0.05)
+    if variant_name == "shift_left_down":
+        return _extract_shifted_cornea_crop(rgb, cornea_mask, x_shift_ratio=-0.05, y_shift_ratio=0.05)
+    if variant_name == "shift_right_up":
+        return _extract_shifted_cornea_crop(rgb, cornea_mask, x_shift_ratio=0.05, y_shift_ratio=-0.05)
     if variant_name == "crop_scale_raw_multiscale":
         return _extract_cornea_square_crop(
             rgb,
@@ -108,7 +165,13 @@ def available_variants() -> list[str]:
     return [
         "raw_rgb",
         "cornea_crop_scale_v1",
+        "cornea_crop_slightly_tight",
+        "cornea_crop_slightly_wide",
         "cornea_crop_wide_context_v1",
+        "shift_left_up",
+        "shift_right_down",
+        "shift_left_down",
+        "shift_right_up",
         "crop_scale_raw_multiscale",
     ]
 
